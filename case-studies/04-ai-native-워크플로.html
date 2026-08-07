@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>혼자서 64개 쇼핑몰·9만 줄을 운영하는 법 — AI-native 개발 워크플로 — 황유빈 케이스 스터디</title>
+<meta name="description" content="혼자서 64개 쇼핑몰·9만 줄을 운영하는 법 — AI-native 개발 워크플로 — K-pop 이벤트 스크래퍼 케이스 스터디. 모든 수치·커밋은 저장소에서 재확인.">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="case.css">
+</head>
+<body>
+<div class="rail" aria-hidden="true"></div>
+<div class="topbar">
+  <a class="back" href="../index.html#deep-dives"><span class="ar">←</span> 포트폴리오</a>
+  <span class="brand"><img src="../assets/favicon.svg" alt="">HWANG YUBIN · DEEP DIVE</span>
+</div>
+
+<header class="cs-head"><div class="wrap">
+  <div class="cs-kicker">케이스 스터디 · ④ 워크플로</div>
+  <h1>혼자서 64개 쇼핑몰·9만 줄을 운영하는 법 — AI-native 개발 워크플로</h1>
+  <p class="cs-prov">K-pop 이벤트 스크래퍼 (64개 쇼핑몰, 단독 운영)&nbsp;&nbsp;·&nbsp;&nbsp;모든 수치·커밋은 스크래퍼 repo 에서 확인. 커밋 해시·파일 경로 명시.</p>
+</div></header>
+
+<main><article class="wrap">
+<h2>한 문단 요약</h2>
+<p>이 시스템은 한 사람이 만들고 유지한다 — 그런데 규모는 <strong>64개 쇼핑몰, 추적 소스 ~9만 줄, 4개월간 463개 커밋, 유닛 테스트 1,082개</strong>다. 쇼핑몰마다 HTML 구조가 다르고 수시로 바뀌어서, 하나를 고치면 다른 하나가 조용히 깨진다. 사람 한 명의 눈으로는 이걸 다 못 본다. 그래서 <strong>코드를 직접 다 짜는 대신, AI 를 "스태프 엔지니어처럼" 부리는 워크플로</strong>를 만들었다 — 규약을 문서로 못박고, 검증을 여러 AI 에이전트에게 병렬로 시키고, 만든 것을 스스로 반박하게 하고, 배운 것을 기억에 쌓고, 감사 도구로 회귀를 막는다. 이 글은 그 다섯 개의 축과, <strong>이 글을 쓰는 과정 자체가 코드 버그를 잡아 같은 날 고친</strong>(PR #66) 실사례다.</p>
+<hr>
+<h2>1. 문제 — 1인 개발자의 네 가지 한계</h2>
+<p>혼자 이 규모를 운영하면 네 곳에서 막힌다.</p>
+<ul><li><strong>컨텍스트</strong> — 64개 샵 × 12개 플랫폼(cafe24·makeshop·godo·shopify·yes24 …)의 세부를 한 머리에 다 담을 수 없다. 어제 고친 걸 오늘 잊는다.</li><li><strong>회귀</strong> — 공통 파서를 한 줄 고치면 그 게이트를 지나는 수십 개 샵이 영향받는다. "고쳤는데 다른 게 깨진" 걸 사람 눈으로 전수 확인하기 어렵다.</li><li><strong>품질</strong> — 리뷰어가 없다. 내가 만든 걸 내가 승인하면 같은 맹점을 못 본다(케이스 스터디 ③의 "자기 검증의 함정"과 같은 문제).</li><li><strong>기억</strong> — 세션이 끝나면 맥락이 사라진다. "이 샵은 왜 이렇게 처리했더라"가 매번 리셋된다.</li></ul>
+<p>각 한계에 하나씩 대응하는 <strong>다섯 개의 축</strong>을 세웠다.</p>
+<hr>
+<h2>2. 다섯 개의 축</h2>
+<h3>축 ① 규약을 코드처럼 — <code>CLAUDE.md</code></h3>
+<p>AI 에게 매번 같은 원칙을 말로 반복하는 대신, <strong>프로젝트 규약을 파일로 못박아</strong> 세션마다 자동 주입한다(<code>CLAUDE.md</code>, repo 루트). 규약은 추상적 선언이 아니라 <strong>집행 가능한 규칙</strong>이다:</p>
+<ul><li><strong>샵별 vs 공통 편집 경계</strong> — "특정 사이트를 고치라면 그 샵 모듈(<code>main/shops/&lt;id&gt;.js</code>)만. 공통으로 확장하지 말 것. 애매하면 물어봐." → 한 샵 수정이 64개로 번지는 사고를 구조적으로 차단.</li><li><strong>Git 위생</strong> — 미커밋 변경 누적 임계값, 기본 브랜치 보호, <strong>merge commit(잔디·이력 보존, squash 금지)</strong> 규약.</li><li><strong>실행 중 프로세스 보호</strong> — "사용자가 결과를 확인 중일 수 있으니 dev 프로세스를 임의로 죽이지 말 것." → 검증을 이유로 운영을 끊는 실수 방지.</li><li><strong>자기 개선 루프</strong> — 교정받으면 <code>tasks/lessons.md</code> 에 패턴을 적어 재발을 막는다.</li></ul>
+<p>규약을 문서로 두니, 같은 실수를 두 번 하지 않는 <strong>재현 가능한 작업 표준</strong>이 된다.</p>
+<h3>축 ② 서브에이전트·워크플로 오케스트레이션 — 병렬 팬아웃 검증</h3>
+<p>한 개의 긴 대화로 다 하지 않는다. <strong>독립적인 하위 작업은 여러 AI 에이전트에게 병렬로 팬아웃</strong>하고 결과만 취합한다. 컨텍스트를 깨끗이 유지하면서 검증의 폭을 넓히는 방식이다.</p>
+<blockquote><strong>실사례(이 케이스 스터디 시리즈)</strong>: 각 편을 쓰기 전, <strong>4개의 검증 에이전트를 병렬로</strong> 띄워 커밋·코드·수치를 각자 다른 각도에서 대조하게 했다(예: ②편은 CDP 캡처 / cafe24 안티봇 / 에스컬레이션 / 커버리지 카운트를 각 에이전트가 담당, 구조화 스키마로 근거를 강제). 이 글의 "혼자 못 본다"를 실제로 <strong>여러 눈으로</strong> 본다.</blockquote>
+<p>이 방식은 정확성 감사(케이스 스터디 ③)에서도 썼다 — 독립 판독 에이전트 11개가 화면을 직독해 스크래퍼의 셀렉터와 다른 눈으로 대조했다.</p>
+<h3>축 ③ 적대적 리뷰 — 만들고, 스스로 반박한다</h3>
+<p>만든 결과를 그대로 믿지 않는다. <strong>일부러 반박하는 리뷰</strong>를 붙여, 그럴듯하지만 틀린 것을 걸러낸다.</p>
+<blockquote><strong>실사례</strong>: STEP 1b(하네스 결함 수정)는 <strong>적대적 리뷰 3렌즈</strong>(blocker/major 0, minor 3건 반영)를 거쳤고, 라이브 스냅샷 <strong>1,347건 전수 A/B 스윕</strong>으로 "변경 54건이 전부 의도된 것, 의도 외 부수효과 0건"을 증명했다. STEP 2(구글폼 에이전트)는 <strong>적대적 diff 리뷰</strong>로 결함 3건(URL 쿼리 오매칭·토큰 한도 조용한 실패·동의문 매칭)을 머지 전에 잡아 고쳤다.</blockquote>
+<p>"만든 사람"과 "검증하는 사람"을 분리하는 것 — 혼자여도 그 구조를 AI 로 만든다.</p>
+<h3>축 ④ 메모리 — 세션을 건너 배운 것을 쌓는다</h3>
+<p>세션이 끝나도 사라지지 않게, 배운 것을 <strong>파일 기반 메모리</strong>(현재 <strong>66개</strong>)에 쌓는다. 한 파일에 사실 하나, 프론트매터로 분류(사용자·피드백·프로젝트·참조)하고, <code>MEMORY.md</code> 색인이 매 세션 주입돼 관련 기억을 불러온다.</p>
+<blockquote><strong>실사례(이 세션)</strong>: ②편을 쓰며 "자동 로그인 25개 샵"이라는 기존 메모가 코드와 안 맞음을 발견 — 실제 <code>LOGIN_SPECS</code> 는 23개였다. 케이스 스터디를 바로잡는 데 그치지 않고, <strong>stale 카운트가 재발하지 않도록 관련 메모리 파일의 수치를 현행으로 교정</strong>했다(다음 세션의 오류를 미리 막음).</blockquote>
+<p>메모리는 "기억"이자 <strong>자기 교정 장치</strong>다 — 틀린 것으로 드러난 기억은 지우거나 고친다.</p>
+<h3>축 ⑤ 감사 루프 — 회귀를 도구로 막는다</h3>
+<p>마지막 축은 케이스 스터디 ③의 주제와 같다: 일회성 감사를 <strong>상시 평가 하네스</strong>로 승격해 (<code>npm run eval:golden</code>, 골든셋 112케이스), 누가 파서를 건드리면 "무엇이 새로 깨졌는지"를 즉시 말하게 했다. AI 가 만든 변경도 이 결정적 회귀 가드를 통과해야 한다 — <strong>AI 는 판단에, 결론은 재현 가능한 규칙에</strong> 둔다.</p>
+<hr>
+<h2>3. 하루의 실사례 — 2026-08-05, 그리고 문서가 잡은 버그</h2>
+<p>이 워크플로가 실제로 어떻게 도는지는, <strong>하루치 로그</strong>가 가장 잘 보여준다. 2026-08-05 하루에:</p>
+<pre class="code"><code>2026-08-05  (모두 워크트리 분기 → PR → main merge commit)
+  PR #63  Eval 하네스 (골든셋 112케이스)                    b23937a
+  PR #64  하네스 발견 결함 5건 수정  95.5% → 100%           6875fbe
+  PR #65  구글폼 초안 생성 에이전트 (Gemini tool-use)        e77ef03
+  + 케이스 스터디 ①②③ 초고 (각 편 4-에이전트 병렬 검증)
+  PR #66  ← 아래 참조                                        4837b2f</code></pre>
+<h3>문서 작성이 코드 버그를 잡았다 (PR #66)</h3>
+<p>케이스 스터디 <strong>①(sleep-guard)</strong>을 쓰며, 서사에 인용할 모든 코드를 검증 에이전트로 재확인하던 중 한 줄이 걸렸다:</p>
+<pre class="code"><code>// main/sleep-guard.js (수정 전)
+powerSaveBlocker.start('prevent_app_suspension');   // ← 언더스코어</code></pre>
+<p>Electron 의 유효 상수는 <strong>하이픈</strong> <code>'prevent-app-suspension'</code> 이다. 언더스코어 표기를 실제 Electron 에서 구동해 보니 <strong>throw(conversion failure)</strong> 가 났고, 그걸 <code>try/catch</code> 가 삼켜 <code>_blockerId=null</code> — 즉 <strong>"사이클 중 잠들기 방지(1층 예방)"가 도입 이래 조용히 no-op</strong> 였다. (2층인 하트비트 갭 감지 → <code>SLEEP_INTERRUPTED</code> 재라벨은 독립적으로 정상 동작해, 케이스 ①이 다룬 오탐 방어 자체엔 영향이 없었다 — 그래서 아무도 눈치채지 못했다.)</p>
+<p><strong>같은 날 확인·수정해 PR #66 으로 머지</strong>했다(merge commit <code>4837b2f</code>, 2026-08-05 KST, <code>+14/−1</code>): 유효 상수로 교체 + <code>PSB_TYPE</code> 상수화(주석에 실측 근거) + <strong>오타 회귀 방지 핀 테스트 1개</strong> (sleep-guard 유닛 6 → 7). 검증은 코드 읽기가 아니라 <strong>실제 Electron 구동 실측</strong>(blocker 활성 true / 비활성 true)으로 했다.</p>
+<p>이게 이 워크플로의 핵심을 압축한다 — <strong>문서화(축②의 검증)가 감사(축⑤)를 강제했고, 감사가 도입 이래 숨어 있던 결함을 드러냈고, 적대적 확인(실 Electron 실측)으로 진짜임을 증명한 뒤, 규약(축①의 워크트리→PR→merge)대로 회귀 테스트까지 붙여 같은 날 닫았다.</strong> 다섯 축이 한 사건에서 모두 돌았다.</p>
+<hr>
+<h2>4. 결과 — 혼자, 그러나 혼자가 아니게</h2>
+<div class="tbl"><table><thead><tr><th>지표</th><th>값</th><th>근거</th></tr></thead><tbody><tr><td>추적 소스</td><td><strong>~9만 줄</strong> (앱 코드 main+src ≈ 5.7만, +스크립트 1.3만·테스트 1.2만)</td><td><code>git ls-files</code> + <code>wc -l</code> = 90,026</td></tr><tr><td>지원 쇼핑몰</td><td><strong>77개 모듈</strong> (활성 ~64)</td><td><code>main/shops/*.js</code></td></tr><tr><td>커밋 · 기간</td><td><strong>463 커밋 · ~4개월</strong> (2026-04-09 → 08-05)</td><td><code>git log</code> (main)</td></tr><tr><td>유닛 테스트</td><td><strong>1,082개 그린</strong> (PR #66 후 1,083)</td><td><code>npx vitest run</code></td></tr><tr><td>축적 메모리</td><td><strong>66개 파일</strong></td><td><code>memory/*.md</code></td></tr><tr><td>추적 파일</td><td>584개</td><td><code>git ls-files</code></td></tr></tbody></table></div>
+<p>숫자의 요점은 "많다"가 아니라, <strong>한 사람이 이 규모를 회귀 없이 유지한다</strong>는 것이다. 그걸 가능하게 한 건 손이 빠른 게 아니라 — 규약을 코드로, 검증을 병렬로, 리뷰를 적대적으로, 기억을 파일로, 감사를 상시로 만든 <strong>워크플로</strong>다.</p>
+<hr>
+<h2>5. 배운 것</h2>
+<ol><li><strong>AI-native 는 "AI 가 코드를 대신 짜는 것"이 아니다.</strong> 핵심은 <strong>검증을 확장</strong>하는 것이다 — 병렬 에이전트, 적대적 리뷰, 상시 감사로 "혼자 못 보는 것"을 보게 만든다. 생산이 아니라 <strong>신뢰</strong>가 병목이었다.</li><li><strong>규약을 문서로 못박으면 실수가 재현되지 않는다.</strong> <code>CLAUDE.md</code> 의 샵별/공통 경계, git 위생, 프로세스 보호는 매번 같은 판단을 강제하는 <strong>집행 가능한 표준</strong>이 됐다.</li><li><strong>문서화가 최고의 감사다.</strong> 케이스 스터디를 쓰려고 코드를 인용 단위로 재검증하다 도입 이래 죽어 있던 버그(PR #66)를 잡았다. "설명할 수 있게 다시 보는 것"이 코드 리뷰보다 촘촘했다.</li><li><strong>기억은 자산이자 부채다.</strong> 66개 메모리가 세션을 잇지만, 틀린 기억("25개 샵")은 오류를 전파한다 — 그래서 기억도 <strong>검증·교정 대상</strong>으로 다룬다(발견 즉시 현행 수치로 갱신).</li><li><strong>혼자여도 "만든 사람 ≠ 검증하는 사람" 구조를 만들 수 있다.</strong> 그 분리를 AI 로 구현한 것이 이 1인 운영의 실체다. 그리고 그 구조가 흔들리면(축 하나라도 빠지면) 조용한 회귀가 돌아온다.</li></ol>
+<hr>
+<h3>근거 (repo 대조)</h3>
+<div class="tbl"><table><thead><tr><th>주장</th><th>근거</th></tr></thead><tbody><tr><td>규모 9만 줄 / 77샵 / 463커밋 / 1,082테스트 / 66메모리</td><td>`git ls-files\</td><td>wc -l<code>=90,026, </code>main/shops/*.js<code>=77, </code>git log<code>=463(2026-04-09~08-05), </code>npx vitest run<code>=1,082, </code>memory/*.md`=66</td></tr><tr><td>규약을 코드로</td><td><code>CLAUDE.md</code>(샵별/공통 경계·git 위생·프로세스 보호·자기개선 루프), <code>tasks/lessons.md</code></td></tr><tr><td>하루 4 STEP 머지 (2026-08-05)</td><td>PR #63 <code>b23937a</code>(하네스), #64 <code>6875fbe</code>(결함수정 95.5→100%), #65 <code>e77ef03</code>(에이전트)</td></tr><tr><td>적대적 리뷰 실사례</td><td>STEP 1b 3렌즈(blocker/major 0·minor 3)·A/B 스윕 1,347건 의도 외 0; STEP 2 diff 리뷰 결함 3건</td></tr><tr><td>문서 작성 중 버그 발견 → 당일 수정</td><td><strong>PR #66</strong> merge <code>4837b2f</code>(2026-08-05 KST, <code>+14/−1</code>); <code>main/sleep-guard.js</code> <code>prevent_app_suspension</code>→<code>prevent-app-suspension</code>, 회귀 테스트 6→7, 실 Electron 실측</td></tr><tr><td>상시 감사 루프</td><td><code>npm run eval:golden</code>(골든셋 112) — 케이스 스터디 ③</td></tr><tr><td>병렬 검증 오케스트레이션</td><td>이 시리즈 각 편 4-에이전트 병렬 repo 검증; 감사 독립 판독 에이전트 11개</td></tr></tbody></table></div>
+<p><em>초고 · 2026-08-05 KST. 공개 게시 전 개인정보·API 키 없음 확인.</em></p>
+</article></main>
+
+<footer>
+  <div class="wrap">
+    <nav class="nav-dives" aria-label="다른 케이스 스터디">
+      <a href="01-sleep-guard-장애진단.html">① 수면이 만든 가짜 장애</a>
+      <a href="02-antibot-인증자동복구.html">② 봇으로 안 몰리고 세션 지키기</a>
+      <a href="03-정확성감사-eval하네스.html">③ 스크래퍼가 맞는지 아는 법</a>
+      <a href="#" aria-current="page">④ 혼자 9만 줄 운영하는 법</a>
+    </nav>
+    <a class="back" href="../index.html#deep-dives"><span class="ar">←</span> 포트폴리오로 돌아가기</a>
+    <p class="copy" style="margin-top:18px">© 2026 HWANG YUBIN — BUILT BY HAND, RUN IN PRODUCTION</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var rail=document.querySelector(".rail");
+  addEventListener("scroll",function(){
+    var h=document.documentElement;
+    rail.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100||0)+"%";
+  },{passive:true});
+})();
+</script>
+</body>
+</html>

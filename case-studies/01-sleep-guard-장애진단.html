@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>새벽마다 사이트가 "죽는다"는 알림 — 범인은 사이트가 아니라 내 노트북의 잠 — 황유빈 케이스 스터디</title>
+<meta name="description" content="새벽마다 사이트가 "죽는다"는 알림 — 범인은 사이트가 아니라 내 노트북의 잠 — K-pop 이벤트 스크래퍼 케이스 스터디. 모든 수치·커밋은 저장소에서 재확인.">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="case.css">
+</head>
+<body>
+<div class="rail" aria-hidden="true"></div>
+<div class="topbar">
+  <a class="back" href="../index.html#deep-dives"><span class="ar">←</span> 포트폴리오</a>
+  <span class="brand"><img src="../assets/favicon.svg" alt="">HWANG YUBIN · DEEP DIVE</span>
+</div>
+
+<header class="cs-head"><div class="wrap">
+  <div class="cs-kicker">케이스 스터디 · ① 장애 진단</div>
+  <h1>새벽마다 사이트가 "죽는다"는 알림 — 범인은 사이트가 아니라 내 노트북의 잠</h1>
+  <p class="cs-prov">K-pop 이벤트 스크래퍼 (64개 쇼핑몰, 단독 운영)&nbsp;&nbsp;·&nbsp;&nbsp;모든 수치·커밋은 스크래퍼 repo 에서 확인. 커밋 해시·파일 경로 명시.</p>
+</div></header>
+
+<main><article class="wrap">
+<h2>한 문단 요약</h2>
+<p>이 시스템은 6시간마다 자동으로 64개 쇼핑몰을 돌며 K-pop 이벤트를 수집한다. 어느 날부터 새벽 사이클에서 "리스트 수집 시간 초과(600초)" 오류가 무더기로 쏟아졌고, 멀쩡한 사이트들이 "고장 났다"며 자동 격리됐다. 사이트를 아무리 들여다봐도 멀쩡했다. 진짜 원인은 <strong>엉뚱한 곳</strong>에 있었다 — 예약된 스크랩이 <strong>내 맥이 잠든 사이에</strong> 깨어나 실행되면서, 타임아웃 시계가 잠자는 시간까지 흘려버린 것이다. 사이트 탓이 아니라 로컬 머신의 수면이 만든 <strong>가짜 장애</strong>였다. 이 글은 그 오탐을 "관찰 → 가설 → 검증 → 수정"으로 추적해 근절한 기록이다(커밋 <code>e6df5fc</code>).</p>
+<hr>
+<h2>1. 문제 — "사이트가 죽었다"는 거짓 경보</h2>
+<p>스크래퍼는 6시간 간격의 자동 사이클로 각 쇼핑몰의 이벤트 목록을 수집한다. 목록 수집에는 <strong>10분(600초) 벽시계 타임아웃</strong>이 걸려 있다 — 한 사이트가 너무 오래 붙잡으면 잘라내고 다음으로 넘어가기 위해서다 (<code>main/scraper.js:241</code>의 오류 문자열, <code>:940</code>의 <code>LIST_TIMEOUT_DYNAMIC_MS = Math.min(SHOP_TIMEOUT_DYNAMIC_MS, 600000)</code>).</p>
+<p>2026-06-26 ~ 07-01, 이 타임아웃이 <strong>82건</strong> 터졌다. 문제는 단순한 실패가 아니라 <strong>연쇄 오염</strong>이었다:</p>
+<ul><li>스크래퍼에는 서킷 브레이커가 있다 — 어떤 샵이 <strong>연속으로 실패</strong>하면 "고장(broken)"으로 판정해 자동 격리한다(불필요한 재시도를 멈추고 운영자에게 알리기 위함).</li><li>그런데 타임아웃 82건이 여러 샵에 흩어져 쌓이자, 서킷 브레이커가 <strong>멀쩡한 사이트들을 "고장"으로 격리</strong>하기 시작했다. 실제로 사이트에 접속하면 정상이었다.</li></ul>
+<p>즉 <strong>오탐이 신뢰 장치 자체를 오염</strong>시키고 있었다. 서킷 브레이커는 "진짜 죽은 사이트"를 걸러내라고 만든 건데, 가짜 신호가 그걸 무의미하게 만들고 있었다. 이건 사이트 버그가 아니라 <strong>관측 시스템의 버그</strong>였고, 그래서 더 위험했다 — 이대로 두면 "격리됨" 표시를 아무도 못 믿게 된다.</p>
+<hr>
+<h2>2. 진단 — 관찰 → 가설 → 검증</h2>
+<p>증상만 보면 "특정 사이트들이 느려졌다"로 오진하기 쉬웠다. 셀렉터를 고치거나 타임아웃을 늘리는 헛수고로 빠질 수 있는 함정이었다. 진단 노트(<code>tasks/todo.md</code>, 커밋 <code>e6df5fc</code> 시점)에 남긴 추적은 다음 순서였다.</p>
+<h3>① 관찰 — durationMs 모순</h3>
+<p>가장 먼저 눈에 걸린 건 <strong>숫자가 앞뒤가 안 맞는다</strong>는 것이었다. 타임아웃은 명목상 <strong>600초(10분)</strong> 인데, 실제로 기록된 실행 시간(<code>durationMs</code>)은 <strong>11~23분</strong>이었다.</p>
+<pre class="code"><code>명목 타임아웃:  600초 = 10분   ← 여기서 잘려야 함
+실제 durationMs: 11 ~ 23분      ← 그런데 이만큼 걸렸다?</code></pre>
+<p>10분에서 자르기로 한 타임아웃이 어떻게 23분씩 걸릴 수 있나? <code>setTimeout(600000)</code>이 정상이라면 불가능하다. <strong>타이머가 재는 "시간" 자체가 실제 경과와 어긋나 있다</strong>는 뜻이었다. 이 모순이 결정적 단서였다.</p>
+<h3>② 가설 — 벽시계 타임아웃이 "잠든 시간"을 소진했다</h3>
+<p><code>setTimeout</code>은 <strong>벽시계(wall-clock)</strong> 기준이다. 만약 사이클이 도는 도중 머신이 잠들면, JS 이벤트 루프는 멈추지만 벽시계 상으로는 시간이 계속 흐른 것으로 계산된다. 깨어나는 순간 "이미 600초가 지났다"며 타임아웃이 즉시 터진다 — <strong>실제로는 네트워크가 10분을 쓴 게 아니라, 잠자는 시간이 타임아웃 예산을 먹어치운 것</strong>이다. durationMs가 명목값을 초과한 이유가 여기서 설명된다.</p>
+<p>가설의 배경: 자동 사이클은 6시간 간격이라 <strong>새벽 시간대에도 발동</strong>한다. 맥이 딥슬립에 든 상태에서 스케줄러가 잠깐 깨어나는 창(macOS의 <strong>DarkWake</strong>)에 사이클이 걸리면, 수집이 시작됐다가 다시 잠들고, 그 사이 벽시계 타임아웃이 소진되는 시나리오다.</p>
+<h3>③ 검증 — DarkWake 시각 대조 + 대조군 + 대안 반박</h3>
+<p>가설을 세 방향으로 검증했다.</p>
+<ol><li><strong>시각 상관</strong> — macOS 전원관리 로그(<code>pmset</code>)의 <strong>DarkWake 이벤트 시각</strong>과 82건의 타임아웃 발생 시각을 대조했더니 <strong>초 단위로 일치</strong>했다. 타임아웃이 터진 순간마다 머신이 DarkWake 상태였다.</li><li><strong>대조군(awake-day)</strong> — 내가 맥을 켜두고 깨어 있던 날(<strong>06-29, 07-02</strong>)에는 같은 타임아웃이 <strong>0건</strong>이었다. 코드는 그대로인데 "잠들었느냐"만 다르면 증상이 나타났다 사라졌다 한다 → 인과의 방향이 확정된다.</li><li><strong>대안 가설 전부 반박</strong> — 오탐을 다른 흔한 원인으로 돌릴 수 있는지 하나씩 지웠다:</li></ol>
+<div class="tbl"><table><thead><tr><th>대안 가설</th><th>반박 근거</th></tr></thead><tbody><tr><td>코드 회귀(최근 커밋이 깨뜨림)</td><td>06-25 ~ 07-02 사이 <strong>커밋 0건</strong> (git 이력으로 독립 확인)</td></tr><tr><td>감사 부하</td><td>감사 산출물은 <strong>07-02 생성</strong> — 사건(06-26~) 이후라 원인일 수 없음</td></tr><tr><td>스왑/메모리 압박</td><td>부차적 요인일 뿐 근본 원인 아님</td></tr><tr><td>네트워크 순단</td><td>1개 사이클의 일시 현상만 설명, 82건 패턴은 설명 못 함</td></tr></tbody></table></div>
+<p><strong>원인 확정</strong>: "리스트 수집 시간 초과(600초)" 82건의 근본 원인은 사이트도 셀렉터도 네트워크도 아닌, <strong>6시간 자동 사이클이 맥 딥슬립의 DarkWake 창에서 발동해 벽시계 타임아웃이 수면 구간을 소진한 것</strong>이었다. (근거: 커밋 <code>e6df5fc</code> 메시지, <code>tasks/todo.md</code>@<code>e6df5fc</code>, <code>main/scraper.js:814</code> 및 <code>main/sleep-guard.js:5</code> 주석.)</p>
+<hr>
+<h2>3. 수정 — sleep-guard, 2층 방어 (커밋 <code>e6df5fc</code>)</h2>
+<p>원인이 "수면"이라면, 해법은 <strong>수면을 알아채고 그때의 타임아웃을 장애로 세지 않는 것</strong>이다. 새 모듈 <code>main/sleep-guard.js</code>(127줄 신규)를 도입해 두 층으로 방어했다.</p>
+<pre class="code"><code>┌─ 1층: 예방 (best-effort) ──────────────────────────────┐
+│  powerSaveBlocker('prevent_app_suspension')            │
+│  사이클 도는 동안 idle-sleep 진입을 막으려 시도.        │
+│  단, 뚜껑 닫기·수동 잠자기는 못 막는다 → 완전하지 않음. │
+└────────────────────────────────────────────────────────┘
+┌─ 2층: 감지 + 중립화 (핵심 보증) ───────────────────────┐
+│  수면을 감지 → 그 구간에 걸친 타임아웃은                │
+│  'SLEEP_INTERRUPTED' 로 재라벨 → 서킷 브레이커가 무시.  │
+└────────────────────────────────────────────────────────┘</code></pre>
+<p>1층(예방)은 완벽할 수 없다 — <code>powerSaveBlocker</code>는 idle-sleep 진입만 지연시킬 뿐, 뚜껑을 닫거나 수동으로 잠재우는 건 못 막는다(이 한계는 <code>tasks/todo-archive-2026-07-03-speedup.md:153</code>에 명시). 그래서 <strong>진짜 보증은 2층(감지+중립화)</strong>이 한다.</p>
+<blockquote>덧붙임(이 글을 쓰며 발견): 인용 코드를 재검증하던 중, 이 1층의 <code>powerSaveBlocker.start()</code> 인자가 Electron 유효 상수(<code>'prevent-app-suspension'</code>)가 아닌 언더스코어 표기였음을 발견했다. 실제 Electron 구동 실측 결과 throw → <code>try/catch</code>가 삼켜 <strong>1층 예방이 도입 이래 조용히 no-op</strong> 였다(2층 감지는 독립적으로 정상이라 오탐 방어엔 영향 없음). 같은 날 확인·수정해 <strong>PR #66</strong>(merge <code>4837b2f</code>, 회귀 테스트 1개 추가)으로 닫았다. 이 발견 자체가 케이스 스터디 ④(AI-native 워크플로)의 "문서화가 감사를 강제한" 실사례다.</blockquote>
+<h3>어떻게 "수면"을 감지하나 — 하트비트 갭</h3>
+<p>머신이 잠들면 JS 는 아예 안 돈다. 이 성질을 역이용한다.</p>
+<pre class="code"><code>// main/sleep-guard.js:19-49 (요약)
+const HEARTBEAT_MS = 15000;   // 15초마다 tick
+const GAP_FACTOR   = 4;       // tick 이 4배(=60초) 이상 밀리면 freeze 로 판정
+
+_timer = setInterval(() =&gt; {
+  const now = Date.now();
+  const gap = now - _lastTick;
+  if (gap &gt; HEARTBEAT_MS * GAP_FACTOR) {   // 60초 넘게 tick 이 안 돌았다
+    _freezeWindows.push({ from: _lastTick, to: now });  // = 그 구간 머신이 얼어 있었다
+  }
+  _lastTick = now;
+}, HEARTBEAT_MS);</code></pre>
+<p>15초짜리 하트비트를 돌려두고, tick 간격이 <strong>60초 이상 벌어지면</strong> 그 사이 "JS 가 안 돌았다 = 머신이 얼어 있었다(수면/정지)"고 판정해 <code>{from, to}</code> 벽시계 구간을 <code>_freezeWindows</code>에 기록한다. DarkWake 는 <code>resume</code> 이벤트를 안 쏠 수 있어서, <strong>하트비트 갭이 1차 신호</strong>이고 Electron <code>powerMonitor</code>의 suspend/resume 은 보조 신호로 둔다. (타이머는 <code>unref()</code>라 CLI 종료를 막지 않는다.)</p>
+<h3>타임아웃을 "수면 탓"으로 재라벨</h3>
+<p>각 샵 실행이 끝나면, 그 실행 구간 <code>[startedAt, now]</code>에 수면이 얼마나 겹쳤는지 묻는다.</p>
+<pre class="code"><code>// main/scraper.js:820-829
+const sleepAnnotate = (err, startedAt) =&gt; {
+  const sleptMs = sleepGuard.sleptBetween(startedAt, Date.now());
+  if (err &amp;&amp; err.isTimeout === true &amp;&amp; sleptMs &gt; 60000) {   // 타임아웃 + 수면 60초 초과
+    return {
+      message: `${err.message} (수면 중단 ${Math.round(sleptMs / 1000)}초 — 사이트 문제 아님)`,
+      errorCode: 'SLEEP_INTERRUPTED',
+    };
+  }
+  return { message: err &amp;&amp; err.message, errorCode: undefined };
+};</code></pre>
+<p><code>sleptBetween(t0, t1)</code>은 저장된 freeze 구간과 실행 구간의 <strong>교집합 시간을 합산</strong>해 돌려준다. 조건은 두 가지를 <strong>동시에</strong> 만족해야 한다 — (a) 그 오류가 타임아웃이고(<code>err.isTimeout === true</code>, 메시지 파싱이 아니라 구조적 플래그), (b) 실행 구간에 수면이 <strong>60초 넘게</strong> 겹쳤을 때. 그제서야 <code>SLEEP_INTERRUPTED</code>로 재라벨한다. 이 게이트가 좁아서, 진짜 느린 사이트의 타임아웃은 그대로 장애로 남는다(오탐만 걸러내고 실장애는 안 가린다).</p>
+<h3>서킷 브레이커 오염 차단</h3>
+<p>마지막으로, 재라벨된 실패를 서킷 브레이커가 <strong>중립 처리</strong>하게 했다.</p>
+<pre class="code"><code>// main/shop-health.js:112-121
+let consecFails = 0;
+for (let i = list.length - 1; i &gt;= 0; i--) {
+  if (!list[i].success) {
+    if (list[i].errorCode === 'SLEEP_INTERRUPTED') continue;  // 수면 오탐은 안 센다
+    consecFails++;
+  } else break;
+}</code></pre>
+<p><code>continue</code>가 핵심이다 — <code>break</code>(스트릭 끊기)도 <code>consecFails++</code>(실패로 세기)도 아니다. <code>SLEEP_INTERRUPTED</code> 기록은 <strong>연속 실패 카운트에 안 들어가고, 성공 스트릭을 끊지도 않는다</strong>. 즉 서킷 브레이커의 시야에서 <strong>투명하게 건너뛴다</strong>. 이로써 수면 오탐이 멀쩡한 샵을 "고장"으로 격리하는 연쇄가 끊긴다. (이후 감사에서 격리 사유 문자열도 실장애만 고르도록 추가 보강됐다 — <code>shop-health.js:161-171</code>, <code>e6df5fc</code> 이후 커밋.)</p>
+<hr>
+<h2>4. 결과</h2>
+<ul><li><strong>수정 규모</strong>(<code>e6df5fc</code>, 2026-07-02 12:10 KST): 6개 파일, <strong>+266 / −6</strong>. <code>main/sleep-guard.js</code> 127줄 신규 + <code>main/scraper.js</code>(+34, 배선) + <code>main/shop-health.js</code>(중립 처리) + 유닛 테스트 (<code>sleep-guard.test.js</code> +51, <code>shop-health-classify.test.js</code> +17).</li><li><strong>인과가 코드로 봉인됐다</strong> — 진단에서 확정한 "수면 → 벽시계 타임아웃 → 서킷 브레이커 오염" 사슬을, 감지(하트비트) → 재라벨(<code>SLEEP_INTERRUPTED</code>) → 중립화(서킷 브레이커)로 그대로 끊었다. 대조군 근거(awake-day 0건)가 "수면이 없으면 오탐도 없다"를 이미 증명했으므로, 수면을 오탐에서 분리한 이 수정은 설계상 82건 유형의 재발을 차단한다.</li><li><strong>안정성</strong> — <code>main/sleep-guard.js</code>는 도입 이래 <strong>한 번도 수정되지 않았다</strong>. 파일 전체 git 이력이 <code>e6df5fc</code> <strong>단일 커밋</strong>이다(이후 34일간 무변경). 뒤이은 커밋들(<code>6d1f2b4</code>, <code>90738b1</code>)은 <code>shop-health.js</code>만 손댔고 sleep-guard 로직 자체는 건드릴 필요가 없었다.</li><li><strong>검증</strong> — <code>tests/unit/sleep-guard.test.js</code> <strong>6개 그린</strong>(하트비트 없이 freeze 창을 주입하는 <code>__test</code> 훅으로 결정적 테스트), 전체 스위트 <strong>119파일 / 1,082 테스트 그린</strong>(vitest 4.1.5, 현재 main <code>e77ef03</code>).</li></ul>
+<pre class="code"><code>진단 → 수정 요약
+  증상        "리스트 수집 시간 초과(600초)" 82건 (06-26~07-01), 서킷 브레이커 오염
+  단서        durationMs 11~23분  ≫  명목 600s (모순)
+  검증        pmset DarkWake 시각 초단위 일치 · awake-day(06-29,07-02) 0건 · 대안 4개 반박
+  근본원인    자동 사이클 × 딥슬립 DarkWake × 벽시계 타임아웃
+  수정        sleep-guard(e6df5fc) — 감지+SLEEP_INTERRUPTED 재라벨+서킷 브레이커 중립화
+  현재        단일 커밋 이래 34일 무변경 · 유닛 6 + 전체 1,082 그린</code></pre>
+<hr>
+<h2>5. 배운 것</h2>
+<ol><li><strong>증상의 층위와 원인의 층위가 다를 수 있다.</strong> "사이트 타임아웃"이라는 증상은 애플리케이션 층에서 왔지만 원인은 <strong>OS 전원관리 층</strong>에 있었다. 증상이 난 곳만 파면 영원히 못 찾는다.</li><li><strong>모순되는 숫자가 최고의 단서다.</strong> "10분 타임아웃이 23분 걸렸다"는 물리적으로 불가능한 값이 수사의 방향을 통째로 바꿨다. 로그를 볼 때 "말이 안 되는 수치"를 그냥 넘기지 않는 습관이 진단을 가른다.</li><li><strong>벽시계 타임아웃은 수면 앞에서 거짓말한다.</strong> <code>setTimeout</code>은 단조 시계(monotonic)가 아니라 벽시계라, 프로세스가 얼어 있는 동안에도 "시간이 갔다"고 계산한다. 장기 실행·예약 작업의 타임아웃은 이 함정을 항상 안고 있다.</li><li><strong>대조군이 인과를 확정한다.</strong> "깨어 있던 날 0건"이라는 자연 실험이, 상관(pmset 시각 일치)을 인과로 끌어올렸다. 재현 가능한 대조 없이는 "그럴듯한 가설"에서 멈춘다.</li><li><strong>오탐도 장애다 — 신뢰 장치를 오염시키면 진짜 신호를 묻는다.</strong> 서킷 브레이커는 진짜 죽은 샵을 격리하려고 만든 건데, 가짜 신호가 들어오자 그 판단 전체를 못 믿게 됐다. 관측 시스템의 오탐은 단순 노이즈가 아니라 <strong>신뢰의 근간을 갉는 2차 장애</strong>다. 그래서 "예방(best-effort) + 감지·중립화 (보증)"의 2층 방어로, 막지 못하는 경우까지 <strong>오염만은 확실히 차단</strong>하도록 설계했다.</li></ol>
+<hr>
+<h3>근거 (repo 대조)</h3>
+<div class="tbl"><table><thead><tr><th>주장</th><th>근거</th></tr></thead><tbody><tr><td>600초 목록 타임아웃 실체</td><td><code>main/scraper.js:241</code>(오류 문자열), <code>:940</code>(<code>LIST_TIMEOUT_DYNAMIC_MS</code>)</td></tr><tr><td>82건 · 06-26~07-01 · durationMs 11~23분 · DarkWake 시각 일치 · awake-day 0건 · 대안 반박</td><td>진단 노트 <code>tasks/todo.md</code>@<code>e6df5fc</code>, 커밋 <code>e6df5fc</code> 메시지, <code>main/scraper.js:814</code> 및 <code>main/sleep-guard.js:5</code> 주석 (동일 진단 4곳 기록) · 커밋 회귀 반박은 git 이력(06-26~07-01 커밋 0)로 독립 확인</td></tr><tr><td>하트비트 갭 감지 (15s tick, 60s freeze)</td><td><code>main/sleep-guard.js:19-20</code>, <code>:40-49</code>, <code>_freezeWindows</code>/<code>sleptBetween</code> <code>:74-82</code></td></tr><tr><td>타임아웃 재라벨 게이트 (<code>isTimeout &amp;&amp; sleptMs&gt;60000</code>)</td><td><code>main/scraper.js:820-829</code> (<code>sleepAnnotate</code>), 정적/동적 목록 catch <code>:1128</code>·<code>:1296</code></td></tr><tr><td>서킷 브레이커 중립화 (<code>continue</code>)</td><td><code>main/shop-health.js:112-121</code></td></tr><tr><td>수정 규모·커밋·일시</td><td><code>e6df5fc</code> (2026-07-02 12:10 KST, 6 files +266/−6, <code>sleep-guard.js</code> +127 신규)</td></tr><tr><td>도입 이래 단일 커밋·무변경</td><td><code>git log -- main/sleep-guard.js</code> = <code>e6df5fc</code> 1건 (이후 <code>6d1f2b4</code>·<code>90738b1</code>은 <code>shop-health.js</code>만)</td></tr><tr><td>테스트 그린 (6 + 1,082)</td><td><code>npm test</code>(vitest 4.1.5) on main <code>e77ef03</code></td></tr></tbody></table></div>
+<blockquote>참고: 82건·durationMs 수치는 사건 당시 진단 노트·커밋 메시지에 기록된 운영 관측값이다(원시 카운트 로그 <code>shop-health.json</code>은 미추적, <code>reports/</code>는 gitignore). 본문은 repo 에 커밋된 진단 기록과 코드·git 이력을 근거로 하며, 진단 방법(pmset DarkWake 시각 대조·awake-day 대조군)은 노트에 명시된 그대로다.</blockquote>
+<hr>
+<h3>후기 — 이 글의 사실 검증이 또 하나의 버그를 찾았다 (2026-08-05)</h3>
+<p>이 케이스 스터디를 쓰며 코드를 재검증하던 중, 1층 예방의 인자 오타가 발견됐다. <code>powerSaveBlocker.start('prevent_app_suspension')</code> — Electron 유효 상수는 하이픈 표기(<code>'prevent-app-suspension'</code>)다. 실제 Electron 구동으로 실측한 결과 언더스코어 표기는 예외를 던지고, 그 예외가 try/catch 에 삼켜져 <strong>1층은 도입 이래 34일간 조용히 비활성(no-op)이었다.</strong> 그동안 오탐 방어를 실제로 수행한 것은 전적으로 2층(하트비트 갭 감지 → 재라벨 → 중립화)이었다.</p>
+<p>당일 수정·머지했다(PR #66, <code>4837b2f</code> — 상수 교체 + 오타 회귀 방지 핀 테스트, 수정 모듈을 실제 Electron 에서 구동해 blocker 활성/해제까지 확인). 결과적으로 이 사건은 본문 교훈의 실증이 됐다: <strong>best-effort 층은 조용히 죽을 수 있으므로, 보증은 감지·중립화 층에 두어야 한다.</strong> 그리고 작성한 글의 주장을 코드로 재검증하다 새 결함을 찾아내는 이 과정 자체가, 이 프로젝트가 정확성을 다루는 방식이다.</p>
+<p><em>초고 · 2026-08-05 KST. 공개 게시 전 개인정보·API 키 없음 확인.</em></p>
+</article></main>
+
+<footer>
+  <div class="wrap">
+    <nav class="nav-dives" aria-label="다른 케이스 스터디">
+      <a href="#" aria-current="page">① 수면이 만든 가짜 장애</a>
+      <a href="02-antibot-인증자동복구.html">② 봇으로 안 몰리고 세션 지키기</a>
+      <a href="03-정확성감사-eval하네스.html">③ 스크래퍼가 맞는지 아는 법</a>
+      <a href="04-ai-native-워크플로.html">④ 혼자 9만 줄 운영하는 법</a>
+    </nav>
+    <a class="back" href="../index.html#deep-dives"><span class="ar">←</span> 포트폴리오로 돌아가기</a>
+    <p class="copy" style="margin-top:18px">© 2026 HWANG YUBIN — BUILT BY HAND, RUN IN PRODUCTION</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var rail=document.querySelector(".rail");
+  addEventListener("scroll",function(){
+    var h=document.documentElement;
+    rail.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100||0)+"%";
+  },{passive:true});
+})();
+</script>
+</body>
+</html>

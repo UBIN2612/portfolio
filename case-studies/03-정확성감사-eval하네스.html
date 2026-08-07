@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>정확성 감사에서 상시 평가 하네스로 — "스크래퍼가 맞는지 어떻게 아는가" — 황유빈 케이스 스터디</title>
+<meta name="description" content="정확성 감사에서 상시 평가 하네스로 — "스크래퍼가 맞는지 어떻게 아는가" — K-pop 이벤트 스크래퍼 케이스 스터디. 모든 수치·커밋은 저장소에서 재확인.">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="case.css">
+</head>
+<body>
+<div class="rail" aria-hidden="true"></div>
+<div class="topbar">
+  <a class="back" href="../index.html#deep-dives"><span class="ar">←</span> 포트폴리오</a>
+  <span class="brand"><img src="../assets/favicon.svg" alt="">HWANG YUBIN · DEEP DIVE</span>
+</div>
+
+<header class="cs-head"><div class="wrap">
+  <div class="cs-kicker">케이스 스터디 · ③ 신뢰성</div>
+  <h1>정확성 감사에서 상시 평가 하네스로 — "스크래퍼가 맞는지 어떻게 아는가"</h1>
+  <p class="cs-prov">K-pop 이벤트 스크래퍼 (64개 쇼핑몰, 단독 운영)&nbsp;&nbsp;·&nbsp;&nbsp;모든 수치·커밋은 스크래퍼 repo 에서 확인. 커밋 해시·파일 경로 명시.</p>
+</div></header>
+
+<main><article class="wrap">
+<h2>한 문단 요약</h2>
+<p>이 시스템은 64개 쇼핑몰에서 K-pop 굿즈·팬사인 이벤트를 자동으로 수집한다. 그런데 "잘 수집하고 있다"를 어떻게 믿는가? 스크래퍼가 <strong>자기 눈(셀렉터)으로 자기를 검증하면 같은 실수를 못 본다.</strong> 그래서 두 단계로 신뢰를 만들었다 — (1) 스크래퍼와 <strong>다른 눈</strong>으로 화면을 다시 읽어 대조하는 일회성 정확성 감사, (2) 그 감사를 매번 1초 만에 재현되는 <strong>상시 평가 도구</strong>로 승격. 결과: 정확도를 112개 실사례로 수치화했고, 그 도구가 스스로 숨어 있던 결함 5건을 찾아냈으며, 고친 뒤 <strong>95.5% → 100%</strong> 가 됐다.</p>
+<hr>
+<h2>1. 문제 — 자기가 자기를 검증하는 함정</h2>
+<p>스크래퍼는 쇼핑몰 HTML 에서 셀렉터로 이벤트 목록과 <strong>상태</strong>(진행중 / 만료 / 품절), <strong>기간</strong>, <strong>분류</strong>를 뽑는다. 문제는 이 판정이 <strong>조용히</strong> 틀린다는 것이다.</p>
+<ul><li>활성 이벤트가 "만료"나 "품절"로 잘못 판정되면 화면에서 <strong>사라진다</strong>. 사용자는 "원래 이 몰엔 이벤트가 없었나 보다" 하고 넘어간다. 오류가 침묵한다.</li><li>확인하려고 스크래퍼의 셀렉터를 다시 돌리면? 셀렉터에 버그가 있으면 <strong>감지도 검증도 같이 틀린다.</strong> 같은 눈으로는 자기 맹점을 못 본다.</li></ul>
+<p>즉 "화면엔 잘 뜬다"는 체감으로는 정확성을 보증할 수 없었다. 신뢰를 <strong>측정 가능한 것</strong>으로 바꿔야 했다.</p>
+<hr>
+<h2>2. 진단 — "감사가 감사받는 구조" (2026-07-02)</h2>
+<p>첫 접근은 스크래퍼와 <strong>독립적인</strong> 측정으로 대조하는 것이었다. 설계 원칙은 <code>tasks/audit-accuracy-plan.md</code> 에 남겼고, 체크포인트 커밋은 <code>d0665c6</code> (2026-07-02 KST) 다.</p>
+<p>핵심은 <strong>"검증은 감지와 다른 눈으로"</strong>:</p>
+<ol><li><strong>독립 측정</strong> — 외부 실측은 스크래퍼의 셀렉터·파서를 <strong>재사용 금지</strong>. 별도 캡처 스크립트 <code>scripts/audit-capture-listings.js</code> 가 각 샵의 스크린샷 + HTML 을 저장하고, <strong>판독 에이전트가 화면을 직접 읽어</strong> 제목 목록을 추출한다(사람이 눈으로 보는 것과 동형의 "제3의 눈").</li><li><strong>증거 파일</strong> — 모든 판정은 <code>reports/audit-&lt;ts&gt;/&lt;shop&gt;/</code> 의 원본 스크린샷·HTML 로 2클릭 내 소급.</li><li><strong>불일치 우선</strong> — 누락 · 유령(없는데 있다고 함) · 검증불가를 숨기지 않고 리포트 최상단에.</li><li><strong>2차 검증</strong> — 판독 결과를 또 다른 에이전트가 재대조(<code>verify/*.json</code>). 감사 도구 자체도 감사받는다.</li></ol>
+<p>규모(감사 계획 문서 Phase 1~4 기준): 내부 수집 65샵 / 1,247건 / 228초(실패 0), 외부 캡처 64샵, 독립 판독 에이전트 11개, 대조는 <code>scripts/audit-compare.js</code>.</p>
+<h3>확정 결함 4계통 (전부 당일 수정, <code>d0665c6</code>)</h3>
+<div class="tbl"><table><thead><tr><th></th><th>결함</th><th>파일</th><th>영향</th></tr></thead><tbody><tr><td>D1</td><td>cafe24 admin-skin 품절 아이콘 오처리</td><td><code>main/parsers.js</code> <code>isCafe24SoldOut</code></td><td>품절/재고 오판 (airmusic·millionmusic·muvve 계열)</td></tr><tr><td>D2</td><td>bstageplus soldout 미추출</td><td><code>main/shops/bstageplus.js</code></td><td>품절 10건 상태 누락</td></tr><tr><td>D3</td><td>oliveyoung_global 셀렉터가 사이드메뉴 배너 매칭</td><td><code>main/shops/oliveyoung_global.js</code></td><td>상품 0건 수집</td></tr><tr><td>D4</td><td>inmyroom 리스트 0건</td><td><code>main/shops/inmyroom.js</code></td><td>활성 2건 실누락</td></tr></tbody></table></div>
+<p>이때 <code>isCafe24SoldOut</code> 수정 주석(<code>d0665c6</code>)이 보여주는 교훈이 하나 더 있다 — 과거의 "cafe24 admin-skin 품절 아이콘은 전부 false-positive" 라는 판단이 <strong>일부 표본의 과잉 일반화</strong>였음이 독립 실측으로 드러났다. 실제로는 그 아이콘이 변별력 있는 실신호였고(muvve 20/20·airmusic 4/4 실측 일치), 감사가 스크래퍼가 아니라 <strong>과거의 내 가정</strong>을 교정했다.</p>
+<p>당시 유닛 테스트는 505개 그린 상태였다(현재 1,082개). 감사는 성공했지만, 한 가지가 남았다 — <strong>이건 그날 스냅샷의 일회성 교정이었다.</strong></p>
+<hr>
+<h2>3. 재발 위험 — 일회성 감사의 한계</h2>
+<p><code>d0665c6</code> 는 그날의 정확성을 고쳤을 뿐이다. 감사 자체는 (a) 사람 + 에이전트 손이 많이 가고, (b) <strong>라이브 사이트에 의존</strong>해 언제든 똑같이 재현하기 어렵고, (c) 다음에 누군가 파서를 건드리면 같은 결함이 <strong>조용히 되돌아온다.</strong></p>
+<p>필요한 건 "매번 돌릴 수 있는 회귀 가드" 였다. 그래서 일회성 감사를 <strong>상시 평가 하네스</strong>로 승격했다.</p>
+<hr>
+<h2>4. 설계 — 상시 평가 하네스 (PR #63, <code>b23937a</code>)</h2>
+<p>아이디어: 결정적 판정 로직(만료 / 품절 / 진행중, 기간 파싱, 키워드 분류)을 <strong>실데이터 골든셋</strong>에 재실행해 정확도를 수치로 낸다.</p>
+<ul><li><strong>골든셋</strong> <code>tests/golden/golden-set.json</code>: 112케이스(실데이터 스냅샷 층화 샘플 107 + 합성 5), <strong>12개 플랫폼 전부</strong> 커버 (cafe24 3종·makeshop·godo·shopify·yes24·ktown4u·generic·dynamic …). 기대 라벨은 "목록 단계에서 결정적 로직이 내려야 할 진실" 기준으로 전수 검수.</li><li><strong>러너</strong> <code>npm run eval:golden</code> (<code>scripts/eval-golden.js</code>) → 콘솔 요약 + <code>reports/eval/&lt;KST&gt;/REPORT.md</code> + <code>report.json</code>. 코어는 <code>scripts/eval/core.js</code>.</li></ul>
+<p>설계에서 세 가지가 이 하네스를 "믿을 수 있게" 만든다:</p>
+<pre class="code"><code>① 결정성 = 시계 고정
+   만료 판정은 내부에서 new Date() 를 읽는다. 평가 중에는 골든셋의 evalNow
+   (2026-08-05T03:00 KST)로 전역 시계를 고정한다(core.js installPinnedClock).
+   → 언제 돌려도 같은 결과. 고정 안 하면 "시간이 지나 실제로 만료된 이벤트"가
+      가짜 회귀로 잡혀 신호가 오염된다.
+
+② AI 판정은 범위 밖
+   하네스는 결정적 로직만 평가한다. Gemini 이미지 판정은 비결정적이라 회귀
+   가드에 넣을 수 없다 — 별도 트랙으로 분리(정직한 경계).
+
+③ 라벨을 코드에 맞추지 않는다
+   골든셋 라벨은 진실 기준이다. 코드가 틀리면 라벨을 바꾸는 게 아니라
+   "의도적 실패"로 남긴다 → 리포트가 곧 결함 목록이 된다.</code></pre>
+<p><strong>회귀 모드</strong>: 직전 리포트와 케이스별로 대조해 "새로 깨진 케이스"를 표시하고, 있으면 <code>exit 2</code>. 하네스 자체 테스트 15개(시계 고정·비교기·회귀 diff·결정성)로 도구를 도구로 검증한다.</p>
+<h3>첫 실측 — 95.5% (107/112)</h3>
+<p>CLI 한 번으로 정확도가 나왔고, <strong>실패 5건은 전부 하네스가 스스로 발견한 실제 결함</strong>이었다 (라벨을 코드에 맞췄다면 0건이 나왔을, 바로 그 함정을 피한 결과).</p>
+<hr>
+<h2>5. 결과 — 하네스가 결함을 잡고, 수정을 지킨다 (PR #64, <code>6875fbe</code>)</h2>
+<p>발견된 5건:</p>
+<ul><li><strong>yg_select ×3</strong> — 열린 범위 <code>"2026.06.02~"</code>(시작일만 명시)를 종료일로 오독해 판매중 MERCH 를 만료 처리.</li><li><strong>dailyduck ×1</strong> — 제목 말미 <code>[품절]</code> 마커를 못 읽음(품절 판정이 DOM 플래그에만 의존).</li><li><strong>jjmuze ×1</strong> — 제목의 <code>" - "</code>(아티스트–앨범 구분 하이픈)를 날짜 범위 구분자로 오인해 게시일이 마감일 자리에 들어감.</li></ul>
+<p>수정은 원인이 <strong>공통 파서냐 샵별 설정이냐</strong>를 먼저 판별해 3계통으로(<code>61e534a</code> date-engine 열린범위 + <code>64e2e21</code> dailyduck 샵 플래그 + <code>4b7dcd7</code> 게이트/테스트). 여기서 하네스가 <strong>회귀 가드</strong>로 작동했다 — 공통 파서를 고치자 같은 게이트를 지나는 다른 케이스 7건 (m2urecord·highlightshop)의 라벨도 바뀌어야 함이 드러났고(재핀), 라이브 스냅샷 <strong>1,347건 전수 A/B 스윕</strong>으로 "변경 54건이 전부 의도된 것, 의도 외 부수효과 0건" 을 증명했다.</p>
+<pre class="code"><code>정확도 추이 (evalNow 고정, 동일 골든셋)
+  도입 첫 실측 ──────────────── 95.5%  (107/112)   ← 실패 5 = 하네스가 찾은 실결함
+  결함 5건 수정 + 재핀 ───────── 100.0% (112/112)   ← 새로 깨짐 0
+  현재 main (e77ef03) ───────── 100.0% (112/112)   ← 유닛 1,082 그린</code></pre>
+<p>일회성 감사(라이브 의존, 재현 어려움)가 <strong>1초짜리 회귀 가드</strong>가 됐다. 이제 누가 파서를 건드리면 <code>npm run eval:golden</code> 이 "무엇이 새로 깨졌는지"를 즉시 말한다.</p>
+<hr>
+<h2>6. 배운 것</h2>
+<ol><li><strong>자기 검증의 함정</strong> — 검증은 감지와 <strong>다른 눈</strong>으로 해야 한다. 스크래퍼 셀렉터를 재사용한 검증은 같은 맹점을 공유한다. 화면 직독(판독 에이전트)이 그 눈이 됐다.</li><li><strong>일회성 감사 &lt; 상시 하네스</strong> — 한 번 맞힌 것은 신뢰가 아니다. <strong>재현성과 회귀 가드</strong>가 신뢰의 실체다. 감사의 가치는 "그날 고친 것"이 아니라 "매번 지키는 것"으로 승격될 때 완성된다.</li><li><strong>결정성이 평가의 전제</strong> — 시계·입력을 고정하지 않으면 "회귀"와 "시간 경과"를 구분할 수 없다. 평가 도구의 첫 번째 요건은 정확함이 아니라 <strong>같은 입력에 같은 답</strong>이다.</li><li><strong>라벨을 코드에 맞추지 않기</strong> — 골든셋이 코드의 거울이 되는 순간 어떤 결함도 못 잡는다. 진실 기준 라벨 + "의도적 실패" 가 하네스를 결함 탐지기로 만든다.</li><li><strong>LLM 을 검증의 도구로 쓰되 결정론으로 감싼다</strong> — 감사에서 판독은 에이전트(사람 눈 대체), 판정은 결정적 로직. AI 는 관찰에, 결론은 재현 가능한 규칙에 둔다.</li></ol>
+<hr>
+<h3>근거 (repo 대조)</h3>
+<div class="tbl"><table><thead><tr><th>주장</th><th>근거</th></tr></thead><tbody><tr><td>2026-07-02 감사 · 4계통 결함 당일 수정</td><td>커밋 <code>d0665c6</code>, <code>tasks/audit-accuracy-plan.md</code></td></tr><tr><td>독립 측정 도구</td><td><code>scripts/audit-capture-listings.js</code>, <code>scripts/audit-compare.js</code></td></tr><tr><td>상시 하네스 · 골든셋 112케이스</td><td>PR #63 (<code>b23937a</code>); <code>scripts/eval-golden.js</code>, <code>scripts/eval/core.js</code>, <code>tests/golden/golden-set.json</code>, <code>docs/EVAL-HARNESS.md</code></td></tr><tr><td>첫 실측 95.5% (107/112)</td><td>도입 시 <code>npm run eval:golden</code> 리포트</td></tr><tr><td>결함 5건 수정 → 100%</td><td>PR #64 (<code>6875fbe</code>); <code>61e534a</code>·<code>64e2e21</code>·<code>4b7dcd7</code></td></tr><tr><td>현재 100% (112/112) · 유닛 1,082</td><td>main <code>e77ef03</code> 에서 <code>npm run eval:golden</code> / <code>npm test</code> 재실행</td></tr></tbody></table></div>
+<p><em>초고 · 2026-08-05 KST. 공개 게시 전 개인정보·API 키 없음 확인.</em></p>
+</article></main>
+
+<footer>
+  <div class="wrap">
+    <nav class="nav-dives" aria-label="다른 케이스 스터디">
+      <a href="01-sleep-guard-장애진단.html">① 수면이 만든 가짜 장애</a>
+      <a href="02-antibot-인증자동복구.html">② 봇으로 안 몰리고 세션 지키기</a>
+      <a href="#" aria-current="page">③ 스크래퍼가 맞는지 아는 법</a>
+      <a href="04-ai-native-워크플로.html">④ 혼자 9만 줄 운영하는 법</a>
+    </nav>
+    <a class="back" href="../index.html#deep-dives"><span class="ar">←</span> 포트폴리오로 돌아가기</a>
+    <p class="copy" style="margin-top:18px">© 2026 HWANG YUBIN — BUILT BY HAND, RUN IN PRODUCTION</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var rail=document.querySelector(".rail");
+  addEventListener("scroll",function(){
+    var h=document.documentElement;
+    rail.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100||0)+"%";
+  },{passive:true});
+})();
+</script>
+</body>
+</html>

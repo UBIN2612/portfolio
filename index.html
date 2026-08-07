@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>황유빈 — 현장을 시스템으로</title>
+<meta name="description" content="현장의 문제를 AI와 자동화로 끝까지 해결하는 개발자 황유빈의 포트폴리오">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<!-- 공유 미리보기(OG) — GitHub Pages 배포 주소가 달라지면 og:url·og:image 두 줄만 수정 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="황유빈 — 현장을, 시스템으로.">
+<meta property="og:description" content="실사용 운영 서비스 2개 · 64개 쇼핑몰 자동화 · 테스트 1,097 — 현장의 문제를 AI와 자동화로 끝까지.">
+<meta property="og:url" content="https://ubin2612.github.io/portfolio/">
+<meta property="og:image" content="https://ubin2612.github.io/portfolio/assets/og.png">
+<meta property="og:image:width" content="2400">
+<meta property="og:image:height" content="1260">
+<meta name="twitter:card" content="summary_large_image">
+<!-- 폰트: 외부 CDN 미사용(오프라인 폴백). 시스템 한글 폰트 스택으로 폴백 -->
+<style>
+/* ============================================================
+   두 세계 토큰 — 하루가 스크롤로 지나간다: 새벽(hero) → 낮(문제/성산)
+   → 노을(전환) → 밤(자동화~끝). 텍스트/카드 토큰은 가독성을 위해
+   dawn/day/night 3단 이산 전환, 하늘(.sky)은 --day(0→1) 연속 스크럽.
+   브랜드 그라데이션: #3DC97B(낮 초록) → #FF5C8A(밤 핑크)
+   ============================================================ */
+@property --day{ syntax:'<number>'; inherits:true; initial-value:0; }
+
+:root{
+  --day:0;                 /* 0 = 새벽/낮, 1 = 밤. 스크롤 스크럽으로 구동 */
+  --bg:#08090C; --card:#0E1016; --glass:rgba(255,255,255,.045);
+  --ink:#F2F3F7; --muted:#9AA1B3;
+  --line:rgba(255,255,255,.09); --line-strong:rgba(255,255,255,.16);
+  --accent:#FF5C8A; --accent-ink:#0B0D12;
+  --accent-soft:rgba(255,92,138,.10); --accent-glow:rgba(255,92,138,.45);
+  --nav-bg:rgba(8,9,12,.55);
+  --shadow:0 30px 80px -30px rgba(0,0,0,.7);
+  --g1:#3DC97B; --g2:#FF5C8A;
+  --grad:linear-gradient(100deg,var(--g1),var(--g2));
+  --font-sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI","Malgun Gothic",sans-serif;
+  --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+/* 새벽 — 차가운 안개빛 (hero / numbers) */
+body.dawn{
+  background-color:#eaeff6;
+  --card:#FFFFFF; --glass:rgba(255,255,255,.62);
+  --ink:#171B26; --muted:#59617A;
+  --line:rgba(23,27,38,.10); --line-strong:rgba(23,27,38,.20);
+  --accent:#E43A6D; --accent-ink:#FFFFFF;
+  --accent-soft:rgba(228,58,109,.08); --accent-glow:rgba(228,58,109,.40);
+  --nav-bg:rgba(242,244,249,.66);
+  --shadow:0 30px 70px -34px rgba(23,27,38,.28);
+  --g1:#1F8A4E; --g2:#E43A6D;
+}
+/* 낮 — 따뜻한 종이빛 (문제 / 성산 현장) */
+body.day{
+  background-color:#f3efe6;
+  --card:#FFFFFF; --glass:rgba(255,255,255,.66);
+  --ink:#1E231D; --muted:#5C635A;
+  --line:rgba(31,36,30,.12); --line-strong:rgba(31,36,30,.22);
+  --accent:#2E7D4F; --accent-ink:#FFFFFF;
+  --accent-soft:rgba(46,125,79,.10); --accent-glow:rgba(46,158,91,.45);
+  --nav-bg:rgba(250,248,243,.66);
+  --shadow:0 30px 70px -32px rgba(31,36,30,.25);
+  --g1:#1F8A4E; --g2:#E43A6D;
+}
+/* 밤 — 딥블랙 (자동화~끝). :root 기본값 사용 */
+
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;background:#05060A}
+body{
+  font-family:var(--font-sans);
+  /* 실제 배경은 .sky(z-index:-3)가 덮지만, 이 색이 대비 계산·forced-colors 폴백의 backdrop.
+     세계별로 하늘 톤과 맞춰 텍스트 대비를 보장(밤=딥다크, 새벽/낮=밝음). */
+  background:#0a0b0f;color:var(--ink);line-height:1.7;
+  transition:color .8s ease,background-color .8s ease;
+  overflow-x:hidden;-webkit-font-smoothing:antialiased;
+  word-break:keep-all;overflow-wrap:break-word;
+}
+p{text-wrap:pretty}
+::selection{background:var(--accent);color:var(--accent-ink)}
+img{max-width:100%;display:block}
+a{color:inherit}
+
+/* ============================================================
+   시그니처 장면 — 스크롤로 스크럽되는 하늘 (핀 고정 = fixed 배경)
+   day/dusk/night 3개 레이어 opacity 를 --day 로 크로스페이드,
+   해·달은 --day 로 호(arc)를 그리며 지나간다.
+   ============================================================ */
+.sky{position:fixed;inset:0;z-index:-3;overflow:hidden;pointer-events:none;contain:strict}
+.sky-layer{position:absolute;inset:0}
+.sky-day{  /* 낮 하늘: 위 하늘색 → 아래 종이빛 지평선. day<~0.55 까지 밝게 유지 */
+  background:linear-gradient(180deg,#bcd6f2 0%,#dbe8f3 42%,#F7F1E6 100%);
+  opacity:clamp(0, calc((0.72 - var(--day)) * 3.2), 1);
+}
+.sky-dusk{ /* 노을: 삼각 밴드, ~0.72 에서 최대 (밝은 낮이 끝난 뒤 물듦) */
+  background:linear-gradient(180deg,#241a3a 0%,#6f3568 28%,#E4638A 60%,#F5A65E 100%);
+  opacity:min( clamp(0, calc((var(--day) - 0.44) * 3.6), 1), clamp(0, calc((1 - var(--day)) * 3.4), 1) );
+}
+.sky-night{ /* 밤: 딥블랙 + 바닥 미묘한 자보라. 후반부에 차오름 */
+  background:radial-gradient(120% 80% at 50% 0%,#0c1020 0%,#07080e 55%,#0a0710 100%);
+  opacity:clamp(0, calc((var(--day) - 0.52) * 2.3), 1);
+}
+.stars{position:absolute;inset:0;opacity:clamp(0, calc((var(--day) - 0.58) * 2.6), 1);
+  background-image:
+    radial-gradient(1.6px 1.6px at 14% 22%,#fff,transparent),
+    radial-gradient(1.4px 1.4px at 28% 12%,#e7ecff,transparent),
+    radial-gradient(1.2px 1.2px at 44% 26%,#fff,transparent),
+    radial-gradient(1.5px 1.5px at 63% 15%,#fff,transparent),
+    radial-gradient(1.1px 1.1px at 76% 28%,#dfe6ff,transparent),
+    radial-gradient(1.6px 1.6px at 88% 18%,#fff,transparent),
+    radial-gradient(1.2px 1.2px at 34% 40%,#fff,transparent),
+    radial-gradient(1.3px 1.3px at 70% 42%,#eef2ff,transparent);
+  background-repeat:no-repeat;
+}
+/* 해·달 — 같은 호를 그리며 지난다. --arc: 0..1..0 (정오에 최고) */
+.celestial{
+  --arc:calc(4 * var(--day) * (1 - var(--day)));
+  position:absolute;left:50%;top:16vh;width:132px;height:132px;margin-left:-66px;
+  transform:translate(calc(var(--day) * 78vw - 39vw), calc((1 - var(--arc)) * 30vh));
+  will-change:transform;
+}
+.sun,.moon{position:absolute;inset:0;border-radius:50%}
+.sun{opacity:clamp(0, calc((0.6 - var(--day)) * 5), 1);
+  background:radial-gradient(circle,#FFF4CE 8%,#FFC94B 46%,rgba(255,190,70,0) 70%);
+  box-shadow:0 0 90px 30px rgba(255,201,75,.45);}
+.moon{opacity:clamp(0, calc((var(--day) - 0.56) * 5), 1);
+  background:radial-gradient(circle at 38% 36%,#F6F8FF 0%,#D3DAEE 62%,rgba(200,210,230,0) 74%);
+  box-shadow:0 0 60px 12px rgba(210,220,245,.30);}
+
+/* 그레인 질감 */
+.grain{position:fixed;inset:0;z-index:2000;pointer-events:none;opacity:.045;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");}
+
+/* ============ 진행선 + 플로팅 네비 ============ */
+.progress{position:fixed;top:0;left:0;height:2.5px;width:0;z-index:120;background:var(--grad)}
+.nav{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:110;
+  display:flex;align-items:center;gap:8px;
+  padding:7px 8px 7px 16px;border-radius:999px;white-space:nowrap;
+  background:var(--nav-bg);border:1px solid var(--line);
+  -webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5);
+  box-shadow:0 12px 40px -18px rgba(0,0,0,.5);
+  transition:background-color .8s ease,border-color .8s ease;
+}
+.nav-name{display:flex;align-items:center;gap:9px;font-weight:800;font-size:14px;
+  letter-spacing:-.01em;text-decoration:none;margin-right:6px}
+.nav-name img{width:21px;height:21px;border-radius:6px}
+.nav-links{display:flex;gap:2px;list-style:none}
+.nav-links a{display:block;padding:7px 12px;border-radius:999px;font-size:12.5px;font-weight:600;
+  color:var(--muted);text-decoration:none;transition:color .22s,background-color .22s}
+.nav-links a:hover{color:var(--ink)}
+.nav-links a.active{background:var(--grad);color:#0B0D12}
+@media (max-width:820px){
+  .nav{top:10px;padding:6px 7px 6px 12px;max-width:94vw;overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav-name span{display:none}
+  .nav-links a{padding:6px 9px;font-size:11.5px}
+}
+
+/* ============ 공통 ============ */
+.wrap{max-width:1120px;margin:0 auto;padding:0 clamp(20px,4vw,48px)}
+section{scroll-margin-top:84px;position:relative}
+h1,h2,h3{letter-spacing:-.035em;text-wrap:balance;line-height:1.18}
+.grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:var(--font-mono);
+  font-size:12px;font-weight:600;letter-spacing:.16em;color:var(--muted);
+  border:1px solid var(--line);border-radius:999px;padding:6px 14px;
+  transition:border-color .8s ease,color .8s ease}
+.eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--grad)}
+.reveal{opacity:0;transform:translateY(28px);
+  transition:opacity .8s cubic-bezier(.2,.6,.2,1),transform .8s cubic-bezier(.2,.6,.2,1)}
+.reveal.on{opacity:1;transform:none}
+.reveal[data-delay="1"]{transition-delay:.12s}
+.reveal[data-delay="2"]{transition-delay:.24s}
+.reveal[data-delay="3"]{transition-delay:.36s}
+
+/* ============ 0. HERO — 새벽 ============ */
+.hero{min-height:100svh;position:relative;overflow:clip;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:110px 20px 0}
+.hero .eyebrow{margin-bottom:30px}
+.hero h1{font-size:clamp(44px,8.6vw,116px);font-weight:800;letter-spacing:-.05em;line-height:1.06}
+.hero p.lede{margin-top:30px;font-size:clamp(16px,2vw,20px);color:var(--muted);max-width:36em;font-weight:450}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+.hero .eyebrow{animation:rise .8s .05s both}
+.hero h1{animation:rise .9s .18s both}
+.hero p.lede{animation:rise .9s .34s both}
+.hero-cue{position:absolute;bottom:38px;left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--muted);
+  font-family:var(--font-mono);font-size:10.5px;letter-spacing:.24em;animation:rise .9s .6s both}
+.cue-line{width:1.5px;height:54px;background:var(--line);position:relative;overflow:hidden}
+.cue-line::after{content:"";position:absolute;inset:0;background:var(--grad);
+  animation:cue 2.1s cubic-bezier(.6,0,.3,1) infinite}
+@keyframes cue{0%{transform:translateY(-100%)}55%{transform:translateY(0)}100%{transform:translateY(100%)}}
+
+/* ============ 1. NUMBERS ============ */
+.numbers{padding:clamp(40px,7vw,90px) 0 clamp(70px,10vw,120px)}
+.num-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.num-grid > div{background:var(--glass);border:1px solid var(--line);border-radius:18px;
+  padding:32px 16px 26px;text-align:center;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  transition:background-color .8s ease,border-color .8s ease}
+.num-grid strong{display:block;font-size:clamp(28px,4.4vw,46px);font-weight:800;
+  letter-spacing:-.035em;font-variant-numeric:tabular-nums;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.num-grid span{font-size:13px;color:var(--muted);font-weight:500}
+@media (max-width:680px){.num-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+
+/* ============ 챕터 공통 ============ */
+.chapter{padding:clamp(90px,13vw,170px) 0}
+.chapter-head{max-width:820px;margin-bottom:clamp(40px,6vw,72px)}
+.chapter-head .eyebrow{margin-bottom:20px}
+.chapter-head h2{font-size:clamp(32px,5.4vw,60px);font-weight:800;letter-spacing:-.045em}
+.chapter-head .oneliner{margin-top:20px;font-size:clamp(16px,2vw,19.5px);color:var(--muted);font-weight:450}
+.chapter-head .oneliner b{color:var(--ink);font-weight:700}
+.live-line{margin-top:20px;display:flex;align-items:flex-start;gap:9px;
+  font-family:var(--font-mono);font-size:12.5px;color:var(--muted);letter-spacing:.02em}
+.live-line i{width:8px;height:8px;border-radius:50%;background:var(--accent);flex:none;margin-top:6.5px;
+  animation:live 2.2s ease-out infinite;transition:background-color .8s ease}
+@keyframes live{0%{box-shadow:0 0 0 0 var(--accent-glow)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+.block{display:grid;grid-template-columns:1fr 1fr;gap:clamp(32px,5vw,72px);align-items:center;padding:clamp(30px,5vw,60px) 0}
+.block.flip .block-media{order:-1}
+.block-text .eyebrow{margin-bottom:18px}
+.block-text h3{font-size:clamp(22px,3vw,31px);font-weight:750;margin-bottom:16px}
+.block-text p{color:var(--muted);font-size:16px;max-width:31em}
+.block-text p + p{margin-top:12px}
+.block-text p b{color:var(--ink);font-weight:700}
+@media (max-width:820px){.block{grid-template-columns:1fr;gap:28px}.block.flip .block-media{order:0}}
+
+.glow{position:relative}
+.glow::before{content:"";position:absolute;inset:6% 2% 2% 2%;z-index:-1;border-radius:28px;
+  background:linear-gradient(120deg,rgba(61,201,123,.4),rgba(255,92,138,.4));filter:blur(42px);opacity:.5;transition:opacity .8s ease}
+body.day .glow::before,body.dawn .glow::before{opacity:.3}
+.frame{background:var(--card);border:1px solid var(--line-strong);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);
+  transition:background-color .8s ease,border-color .8s ease,transform .5s cubic-bezier(.2,.6,.2,1)}
+.glow:hover .frame{transform:translateY(-4px)}
+.frame-bar{display:flex;align-items:center;gap:6px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.frame-bar i{width:9px;height:9px;border-radius:50%;background:var(--line-strong)}
+.frame-bar em{margin-left:8px;font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.04em}
+.frame img,.frame video{width:100%;display:block}
+.media-cap{margin-top:14px;font-size:12.5px;color:var(--muted);font-family:var(--font-mono);letter-spacing:.02em}
+
+/* 벤토 카드 그리드 (기술 포인트 / 파이프라인 등) */
+.bento{display:grid;grid-template-columns:repeat(12,1fr);gap:14px;margin-top:34px}
+.bento-card{grid-column:span 6;background:var(--glass);border:1px solid var(--line);border-radius:18px;
+  padding:26px 26px 22px;position:relative;overflow:hidden;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  transition:background-color .8s ease,border-color .35s ease,transform .35s cubic-bezier(.2,.6,.2,1)}
+.bento-card:hover{transform:translateY(-3px);border-color:var(--line-strong)}
+.bento-card::after{content:"";position:absolute;inset:0 0 auto 0;height:1.5px;background:var(--grad);opacity:0;transition:opacity .35s ease}
+.bento-card:hover::after{opacity:1}
+.bento-card h3{font-size:15.5px;font-weight:700;margin-bottom:8px;letter-spacing:-.01em}
+.bento-card h3::before{content:"— ";background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.bento-card p{font-size:13.8px;color:var(--muted);line-height:1.65}
+.bento-card.wide{grid-column:span 12}
+@media (max-width:680px){.bento-card,.bento-card.wide{grid-column:span 12}}
+
+/* 파이프라인 스텝 (CH.2) */
+.pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:34px}
+/* 고정 다크 서피스 — CH.2 는 노을 하늘 위라, 반투명이면 오른쪽 카드 대비가 씻긴다.
+   4장을 동일한 대비로 통일(배경·글자색을 세계 토큰과 무관하게 고정). */
+.pipe-step{background:rgba(11,13,19,.62);border:1px solid var(--line-strong);border-radius:16px;padding:22px 18px;
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);position:relative;
+  transition:border-color .8s ease}
+.pipe-step .n{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:#FF7AA2;font-weight:700}
+.pipe-step h3{font-size:16px;font-weight:750;margin:8px 0 6px;color:#F3F4F8}
+.pipe-step p{font-size:13px;color:#AAB0C2;line-height:1.6}
+.pipe-step:not(:last-child)::after{content:"→";position:absolute;right:-11px;top:50%;transform:translateY(-50%);
+  color:#9AA1B3;font-weight:700;z-index:1;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+@media (max-width:820px){.pipe{grid-template-columns:repeat(2,1fr)}.pipe-step:nth-child(2n)::after{display:none}}
+@media (max-width:480px){.pipe{grid-template-columns:1fr}.pipe-step::after{display:none}}
+
+/* 스탯 */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:34px}
+.stat{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:28px 16px 24px;text-align:center;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:background-color .8s ease,border-color .8s ease}
+.stat strong{display:block;font-size:clamp(24px,3.4vw,37px);font-weight:800;letter-spacing:-.035em;
+  font-variant-numeric:tabular-nums;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat > span{font-size:12.5px;color:var(--muted);font-weight:600}
+@media (max-width:680px){.stats{grid-template-columns:repeat(2,1fr)}}
+
+/* 터미널 리플레이 (CH.3 자리) */
+.term{background:#0b0d13;border:1px solid var(--line-strong);border-radius:14px;overflow:hidden;
+  font-family:var(--font-mono);box-shadow:var(--shadow);margin-top:8px}
+.term .frame-bar{border-color:rgba(255,255,255,.08)}
+.term pre{margin:0;padding:18px 20px;font-size:12.5px;line-height:1.85;color:#c6ccda;white-space:pre-wrap;word-break:break-word}
+.term .ok{color:#4fd08a}.term .warn{color:#ffce6b}.term .dim{color:#7982a0}.term .pink{color:#ff88b0}
+
+/* ── STEP 7 추가 ─────────────────────────────────────────── */
+/* CH.3 실캡처 프레임 캡션 여백 */
+.media-cap.tight{margin-top:12px}
+.media-cap b{color:var(--ink);font-weight:700}
+/* CH.3 실캡처 — 이미지 자체가 터미널 창(3점+타이틀)이라 별도 프레임바 없이 그림자만 */
+.shot{border-radius:16px;box-shadow:var(--shadow);margin-top:8px}
+.shot img{width:100%;display:block;border-radius:16px}
+/* CH.3 gform·RAG 실캡처 2단 */
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;align-items:start}
+.cap-grid .shot{margin-top:0}
+@media (max-width:820px){.cap-grid{grid-template-columns:1fr;gap:22px}}
+
+/* CH.4 아키텍처 다이어그램 — 공유 엔진 / 플래그 게이트 / 샵 모듈 */
+.arch{margin-top:20px;border:1px solid var(--line);border-radius:20px;padding:clamp(24px,3.6vw,40px);
+  background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  display:flex;flex-direction:column;align-items:center;
+  transition:background-color .8s ease,border-color .8s ease}
+.arch-box{width:100%;max-width:660px;text-align:center;border-radius:14px;padding:16px 22px;
+  border:1px solid var(--line-strong);background:rgba(11,13,19,.55);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+.arch-box .t{font-weight:750;font-size:15.5px;color:#F2F3F7}
+.arch-box .d{font-size:12px;color:#9AA1B3;margin-top:5px;font-family:var(--font-mono);letter-spacing:.01em;line-height:1.7}
+.arch-conn{width:1.5px;height:24px;background:var(--grad)}
+.arch-gate{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.04em;color:var(--accent);
+  border:1px dashed var(--accent-glow);border-radius:999px;padding:6px 16px}
+.arch-shops{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;max-width:660px;margin-top:2px}
+.arch-shop{text-align:center;border-radius:12px;padding:13px 8px 11px;border:1px solid var(--line);
+  background:rgba(11,13,19,.42)}
+.arch-shop b{display:block;font-weight:700;color:#F2F3F7;font-size:13px}
+.arch-shop span{font-family:var(--font-mono);font-size:10px;color:#9AA1B3;letter-spacing:.02em}
+.arch-cap{margin-top:16px;font-size:12.5px;color:var(--muted);font-family:var(--font-mono);
+  letter-spacing:.02em;text-align:center}
+@media (max-width:680px){.arch-shops{grid-template-columns:repeat(2,1fr)}}
+
+/* 7. MATRIX */
+.matrix{padding:clamp(90px,13vw,160px) 0}
+.matrix-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:38px}
+.axis{display:flex;gap:16px;align-items:flex-start;background:var(--glass);border:1px solid var(--line);border-radius:16px;
+  padding:22px 22px;text-decoration:none;color:inherit;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  transition:border-color .3s ease,transform .3s cubic-bezier(.2,.6,.2,1),background-color .8s ease}
+.axis:hover{transform:translateY(-3px);border-color:var(--accent)}
+.axis .k{font-family:var(--font-mono);font-size:13px;font-weight:800;color:var(--accent);flex:none;width:26px}
+.axis h3{font-size:16px;font-weight:750;margin-bottom:4px}
+.axis p{font-size:13.4px;color:var(--muted);line-height:1.6}
+.axis .to{margin-top:8px;font-family:var(--font-mono);font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+.axis:hover .to{color:var(--accent)}
+@media (max-width:760px){.matrix-grid{grid-template-columns:1fr}}
+
+/* 9. DEEP DIVES */
+.dives{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:38px}
+.dive{display:block;background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:26px 26px 24px;
+  text-decoration:none;color:inherit;position:relative;overflow:hidden;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  transition:border-color .3s ease,transform .3s cubic-bezier(.2,.6,.2,1),background-color .8s ease}
+.dive:hover{transform:translateY(-3px);border-color:var(--accent)}
+.dive .tag{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--muted)}
+.dive h3{font-size:18px;font-weight:750;margin:8px 0 8px;letter-spacing:-.02em}
+.dive p{font-size:13.6px;color:var(--muted);line-height:1.6}
+.dive .go{margin-top:14px;font-family:var(--font-mono);font-size:12px;color:var(--accent);letter-spacing:.04em}
+@media (max-width:760px){.dives{grid-template-columns:1fr}}
+
+/* 10. CONTACT */
+.contact{padding:clamp(110px,15vw,190px) 0 60px;text-align:center;position:relative;overflow:clip}
+.contact h2{font-size:clamp(34px,6vw,66px);font-weight:800;letter-spacing:-.05em}
+.contact .sub{margin-top:20px;color:var(--muted);font-size:clamp(15px,1.8vw,18px)}
+.contact-actions{margin-top:44px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:9px;padding:15px 32px;border-radius:999px;text-decoration:none;
+  font-size:15.5px;font-weight:750;letter-spacing:-.01em;
+  transition:transform .25s cubic-bezier(.2,.6,.2,1),box-shadow .25s,border-color .25s}
+.btn:hover{transform:translateY(-2px)}
+.btn:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px}
+.btn-fill{background:var(--grad);color:#0B0D12}
+.btn-fill:hover{box-shadow:0 16px 44px -14px rgba(255,92,138,.55)}
+.btn-ghost{border:1.5px solid var(--line-strong);color:var(--ink)}
+.btn-ghost:hover{border-color:var(--accent)}
+.contact-mail{margin-top:34px;font-family:var(--font-mono);font-size:13.5px;color:var(--muted)}
+.contact-mail a{color:var(--ink);text-decoration-color:var(--accent);text-underline-offset:4px}
+footer{padding:36px 0 46px;text-align:center;border-top:1px solid var(--line);font-size:12px;color:var(--muted);
+  font-family:var(--font-mono);letter-spacing:.05em;display:flex;flex-direction:column;align-items:center;gap:14px;transition:border-color .8s ease}
+footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
+
+@media (max-width:680px){.hero p.lede br,.chapter-head .oneliner br{display:none}}
+
+/* ============================================================
+   가드레일 — 접근성/성능
+   ============================================================ */
+/* 모바일: 스크럽 구간 축소 — 해·달 arc 제거(그라데이션 크로스페이드는 유지) */
+@media (max-width:760px){
+  .celestial{display:none}
+}
+/* prefers-reduced-motion: 모든 스크럽/모션에 정적 대체 */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  :root{transition:--day .5s ease}          /* 스크롤 스크럽 대신 섹션별 이산 크로스페이드 */
+  .celestial{display:none}                   /* 해·달 arc 정지(비표시) */
+  .reveal{opacity:1;transform:none;transition:none}
+  .cue-line::after,.live-line i{animation:none}
+  .hero .eyebrow,.hero h1,.hero p.lede,.hero-cue{animation:none}
+}
+</style>
+</head>
+<body>
+
+<!-- 시그니처 하늘 (스크롤 스크럽) -->
+<div class="sky" aria-hidden="true">
+  <div class="sky-layer sky-day"></div>
+  <div class="sky-layer sky-dusk"></div>
+  <div class="sky-layer sky-night"><div class="stars"></div></div>
+  <div class="celestial"><div class="sun"></div><div class="moon"></div></div>
+</div>
+<div class="grain" aria-hidden="true"></div>
+<div class="progress" aria-hidden="true"></div>
+
+<nav class="nav" aria-label="주요 섹션">
+  <a class="nav-name" href="#hero" aria-label="황유빈 — 맨 위로"><img src="assets/favicon.svg" alt=""><span>황유빈</span></a>
+  <ul class="nav-links">
+    <li><a href="#problem" data-nav>문제</a></li>
+    <li><a href="#automation" data-nav>자동화</a></li>
+    <li><a href="#ai" data-nav>AI</a></li>
+    <li><a href="#reliability" data-nav>신뢰성</a></li>
+    <li><a href="#matrix" data-nav>역량</a></li>
+    <li><a href="#deep-dives" data-nav>딥다이브</a></li>
+    <li><a href="#contact" data-nav>연락처</a></li>
+  </ul>
+</nav>
+
+<main id="content">
+<!-- 0. HERO — 새벽 -->
+<header class="hero" id="hero">
+  <p class="eyebrow">HWANG YUBIN — PORTFOLIO</p>
+  <h1>현장의 문제를,<br><span class="grad-text">AI와 자동화</span>로<br>끝까지.</h1>
+  <p class="lede">복지 현장의 종이 서류부터 커머스 실무의 반복 소싱까지 — <br>제가 직접 겪은 비효율을, 실제 사람들이 매일 쓰는 시스템으로 바꿉니다.</p>
+  <div class="hero-cue" aria-hidden="true"><span>SCROLL</span><div class="cue-line"></div></div>
+</header>
+
+<!-- 1. NUMBERS -->
+<section class="numbers" id="numbers" aria-label="핵심 수치">
+  <div class="wrap">
+    <div class="num-grid">
+      <div class="reveal"><strong><span data-count="64">0</span></strong><span>자동 수집 쇼핑몰</span></div>
+      <div class="reveal" data-delay="1"><strong><span data-count="1097">0</span></strong><span>자동 테스트 통과</span></div>
+      <div class="reveal" data-delay="2"><strong><span data-count="23">0</span></strong><span>자동 로그인 세션</span></div>
+      <div class="reveal" data-delay="3"><strong>30분 → 3분</strong><span>현장 출석 처리</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 2. CH.1 문제 — 낮(성산 현장) -->
+<section class="chapter" id="problem">
+  <div class="wrap">
+    <div class="chapter-head reveal">
+      <p class="eyebrow">CH.1 — 문제</p>
+      <h2>종이에 적고, 전화로 받고,<br>서류철에 쌓이던 하루</h2>
+      <p class="oneliner">사회복무요원으로 지역아동센터의 하루를 지켜봤습니다. 출석은 수기로, 결석 연락은 개별 전화로, 기록은 종이로 — 선생님의 시간이 아이들이 아니라 <b>행정에</b> 쓰이고 있었습니다.</p>
+      <p class="live-line"><i aria-hidden="true"></i>성산지역아동센터 통합 운영 플랫폼 · 2026년 4월부터 실제 운영 중 · 아동 개인정보 보호로 링크 비공개</p>
+    </div>
+    <div class="block">
+      <div class="block-text reveal">
+        <p class="eyebrow">첫 현장</p>
+        <h3>수기 출석부와<br>종이 서류의 세계</h3>
+        <p>센터장님께 직접 제안하고 승인을 받아 혼자 개발을 시작했습니다. <b>학생·학부모·교사</b>가 각자의 화면으로 쓰는 웹 서비스로 <b>4주 만에</b> 바꿨습니다.</p>
+        <p>하루 30분 걸리던 출석 처리가 <b>3분</b>이 되었습니다. 이 첫 현장이 "반복 노동을 시스템으로"라는 이야기의 시작입니다.</p>
+      </div>
+      <div class="block-media reveal" data-delay="1">
+        <div class="glow"><div class="frame">
+          <div class="frame-bar"><i></i><i></i><i></i><em>sungsan-center — 메인</em></div>
+          <video data-autoplay muted loop playsinline preload="none" width="800" height="378" poster="assets/sungsan-main-poster.png" aria-label="성산지역아동센터 웹 메인 페이지 실제 구동 화면">
+            <source src="assets/sungsan-main.webm" type="video/webm">
+            <source src="assets/sungsan-main.mp4" type="video/mp4">
+          </video>
+        </div></div>
+        <p class="media-cap">실제 운영 중인 서비스의 구동 화면</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3. CH.2 자동화 — 밤(스크래퍼) -->
+<section class="chapter" id="automation">
+  <div class="wrap">
+    <div class="chapter-head reveal">
+      <p class="eyebrow">CH.2 — 자동화</p>
+      <h2>사람이 매일 반복하던<br>수십 개 사이트 순회</h2>
+      <p class="oneliner">K-pop 구매대행 실무의 이벤트 소싱을, <b>64개 쇼핑몰을 자동 수집·검증하는 데스크톱 앱</b>으로 통합했습니다. 단순 크롤러가 아니라 <b>목록 → 디테일 → 주문서 실측 → 브리핑</b>까지 도는 파이프라인입니다.</p>
+      <p class="live-line"><i aria-hidden="true"></i>macOS·Windows 설치형 배포 · 실무에서 매일 사용 중 · v1.0.6</p>
+    </div>
+    <div class="pipe">
+      <div class="pipe-step reveal"><div class="n">STEP 01</div><h3>목록 수집</h3><p>플랫폼별 디스패치로 64개 쇼핑몰 이벤트 목록을 긁고 상태(진행/만료/품절)를 판정.</p></div>
+      <div class="pipe-step reveal" data-delay="1"><div class="n">STEP 02</div><h3>디테일 추출</h3><p>본문·기간·특전·응모 조건을 파싱. OCR로 포스터 응모 마감까지 회수.</p></div>
+      <div class="pipe-step reveal" data-delay="2"><div class="n">STEP 03</div><h3>주문서 실측</h3><p>로그인→상품→장바구니→주문서까지 진입해 받아야 할 입력 항목을 실측, 장바구니는 원복.</p></div>
+      <div class="pipe-step reveal" data-delay="3"><div class="n">STEP 04</div><h3>브리핑</h3><p>새 이벤트·마감 임박·할 일을 하루 요약으로. 사람이 검토할 것만 남긴다.</p></div>
+    </div>
+    <!-- 라이브 수집 사이클 터미널 로그 — 실제 npm run scrape:cli 1회 실행 캡처(2026-08-07, 전 라인 실측) -->
+    <div class="term reveal" style="margin-top:22px" aria-label="수집 사이클 실제 터미널 로그">
+      <div class="frame-bar"><i></i><i></i><i></i><em>kpop-event-scraper — npm run scrape:cli (실제 1회 실행)</em></div>
+      <pre><span class="dim">$ npm run scrape:cli</span>
+
+<span class="dim"># 01 목록 수집 — 플랫폼별 디스패치로 순회</span>
+[cli-scrape]  <span class="pink">[62/64]</span> 올리브영 Global (JS)
+[cli-scrape]  <span class="pink">[64/64]</span> · 64 shops / 1,355 events
+
+<span class="dim"># 02 디테일 추출 — 정적/동적 자동 분기</span>
+[detail-pass] yg_select         events=9   detailTargets=7   <span class="ok">static=7</span>
+[detail-pass] oliveyoung_global events=24  detailTargets=24  <span class="ok">dynamic=10</span>
+
+<span class="dim"># 03 주문서 실측 — 로그인 → 상품 → 장바구니 → 주문서</span>
+[follow] withmuu <span class="ok">OK</span>  …/goods_view.php?goodsNo=1000016  <span class="pink">fields=12</span> reqInfo=10
+[follow] oliveyoung_global <span class="dim">skipped: parent has usable form (5 fields)</span>
+
+<span class="dim"># 상태 판정(결정적) — 만료·오래된 이벤트 자동 회수</span>
+[expired] AMPERS&amp;ONE 4th Mini 'DEFINITION' — <span class="warn">ended 2026-07-05</span>
+[scraper] trim: filter kept 0/2 (dropped 2 events older than 90d)
+
+<span class="ok">✓ 수집 사이클 완료</span>  64개 쇼핑몰 순회 · 1,355 이벤트 · <span class="dim">새 이벤트·마감 임박만 브리핑 상단에</span></pre>
+    </div>
+    <div class="block flip" style="margin-top:20px">
+      <div class="block-text reveal">
+        <p class="eyebrow">실측</p>
+        <h3>목록만 긁지 않고,<br>주문서까지 들어가 확인합니다</h3>
+        <p>가능한 쇼핑몰은 <b>로그인 → 상품 → 장바구니 → 주문서</b>까지 자동 진입해, 고객에게 실제로 받아야 할 입력 항목(응모자명·생년월일·연락처 등)을 실측합니다.</p>
+        <p>사이트별 예외는 <b>77개 모듈</b>에 격리하고, 공통 엔진은 플래그로만 확장 — 한 사이트를 고쳐도 나머지가 깨지지 않는 구조입니다.</p>
+      </div>
+      <div class="block-media reveal" data-delay="1">
+        <div class="glow"><div class="frame">
+          <div class="frame-bar"><i></i><i></i><i></i><em>kpop-event-scraper — 이벤트 그리드</em></div>
+          <img src="assets/app-grid.webp" width="1500" height="859" alt="실제 앱 화면 — 64개 쇼핑몰의 이벤트가 카드·마감 D-day·필터와 함께 표시된 그리드" loading="lazy">
+        </div></div>
+        <p class="media-cap">실제 운영 화면 — 64개 쇼핑몰의 이벤트가 상태와 함께 한 화면에</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. CH.3 AI — 밤 -->
+<section class="chapter" id="ai">
+  <div class="wrap">
+    <div class="chapter-head reveal">
+      <p class="eyebrow">CH.3 — AI</p>
+      <h2>AI를 붙이는 게 아니라,<br>AI가 틀리면 어떻게 잡는가</h2>
+      <p class="oneliner">이벤트 분류·OCR·구글폼 초안 에이전트·런북 RAG — 그리고 그 위에 <b>결정적 회귀 가드</b>. AI는 판단에, 결론은 재현 가능한 규칙에 둡니다.</p>
+    </div>
+    <!-- 실캡처 ① eval 리포트 (centerpiece) — STEP 5 실제 CLI 출력 -->
+    <div class="shot reveal">
+      <img src="assets/demo-eval-report.webp" width="1600" height="758" alt="npm run eval:golden 실행 결과 — 골든셋 112케이스 100% 통과(112/112), 회귀 새로 깨짐 0, 도입 95.5% → 결함 5건 수정 → 100%" loading="lazy">
+    </div>
+    <p class="media-cap tight">결정적 회귀 하네스 — 만료·품절·기간·분류 판정을 골든셋 112케이스에 재실행. 무엇이 새로 깨졌는지 매번 즉시 보고.</p>
+    <!-- 실캡처 ②③ 구글폼 에이전트 · 런북 RAG (2단) -->
+    <div class="cap-grid">
+      <div class="reveal">
+        <div class="shot"><img src="assets/demo-gform-agent.webp" width="1400" height="665" alt="구글폼 초안 에이전트 실행 — 주문서 raw 실측 113필드를 문항 15개로 정리(약 7.5:1), tool 3회, 자동 발행 안 함" loading="lazy"></div>
+        <p class="media-cap tight">구글폼 초안 에이전트 — 노이즈 <b>113필드 → 문항 15개</b>(≈7.5:1). tool-use 멀티스텝, 자동 발행 없이 사람 검토.</p>
+      </div>
+      <div class="reveal" data-delay="1">
+        <div class="shot"><img src="assets/demo-rag-answer.webp" width="1400" height="629" alt="런북 RAG 질의 — 답변에 근거 문서 경로·섹션([1][3]) 인용, 근거 없는 질문엔 '문서에 없음'" loading="lazy"></div>
+        <p class="media-cap tight">런북 RAG — 답마다 <b>근거 문서·섹션 인용</b>. 근거 없으면 지어내지 않고 "문서에 없음".</p>
+      </div>
+    </div>
+    <div class="bento" style="margin-top:20px">
+      <div class="bento-card wide reveal"><h3>결정적 가드레일</h3><p>만료·품절·진행중 판정은 AI가 아니라 결정적 로직. 골든셋 회귀 하네스가 매번 "무엇이 새로 깨졌는지"를 즉시 말한다 — AI 비결정성을 평가 밖으로 분리. 위 세 캡처는 모두 <b>실제 CLI 실행 출력</b>입니다.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 5. CH.4 신뢰성 — 밤 -->
+<section class="chapter" id="reliability">
+  <div class="wrap">
+    <div class="chapter-head reveal">
+      <p class="eyebrow">CH.4 — 신뢰성</p>
+      <h2>만든 것을<br>계속 돌게 하는 능력</h2>
+      <p class="oneliner">서킷 브레이커, 인증 자동복구 에스컬레이션, 장애 진단, 감사 이력 — 혼자 운영해도 <b>조용한 회귀</b>가 돌아오지 않게 만드는 SRE 감각.</p>
+    </div>
+    <div class="bento">
+      <div class="bento-card reveal"><h3>서킷 브레이커</h3><p>3연속 실패 샵을 자동 격리, 직전 정상 데이터는 지키고 복구 경로를 연다.</p></div>
+      <div class="bento-card reveal" data-delay="1"><h3>인증 자동복구</h3><p>세션 만료 감지 → 6h → 24h → manual 에스컬레이션. 안티봇을 자극하지 않는 백오프.</p></div>
+      <div class="bento-card reveal" data-delay="2"><h3>sleep-guard</h3><p>수면 중 600s 타임아웃 오탐의 근본원인 진단 → 하트비트 갭 감지로 근절.</p></div>
+      <div class="bento-card reveal" data-delay="3"><h3>테스트 · 감사</h3><p>유닛 1,097개 + 라이브 실측 감사. 리팩터가 회귀를 만들면 즉시 잡힌다.</p></div>
+    </div>
+    <div class="stats reveal" style="margin-top:20px">
+      <div class="stat"><strong><span data-count="1097">0</span></strong><span>자동 테스트</span></div>
+      <div class="stat"><strong><span data-count="468">0</span></strong><span>커밋 · 약 4개월</span></div>
+      <div class="stat"><strong><span data-count="77">0</span></strong><span>격리 샵 모듈</span></div>
+      <div class="stat"><strong>v1.0.6</strong><span>DMG · Windows CI 배포</span></div>
+    </div>
+    <!-- 아키텍처 다이어그램 (로드맵 §2 축4 미완 항목) — 공유 엔진 / 플래그 게이트 / 샵 모듈 -->
+    <div class="block-text reveal" style="margin-top:clamp(34px,5.5vw,60px);max-width:840px">
+      <p class="eyebrow">아키텍처</p>
+      <h3>한 사이트를 고쳐도<br>나머지가 안 깨지는 구조</h3>
+      <p>공통 엔진은 플랫폼별로 디스패치되고, 사이트별 예외는 <b>샵 모듈</b>에 격리됩니다. 엔진의 예외 동작은 오직 <b>플래그 게이트</b>로만 켜져 — 플래그가 없는 샵은 그 코드 경로에 아예 진입하지 않습니다.</p>
+    </div>
+    <div class="arch reveal" role="img" aria-label="아키텍처: 공유 엔진이 플래그 게이트를 통해 77개 샵 모듈로 분기하는 구조">
+      <div class="arch-box">
+        <div class="t">공유 엔진 · 플랫폼 디스패치</div>
+        <div class="d">scraper · scraper-dynamic · scraper-detail<br>checkout-probe · parsers</div>
+      </div>
+      <div class="arch-conn"></div>
+      <div class="arch-gate">config.&lt;flag&gt; 게이트 — 샵별 예외는 플래그로만 진입</div>
+      <div class="arch-conn"></div>
+      <div class="arch-shops">
+        <div class="arch-shop"><b>cafe24</b><span>표준폼·안티봇</span></div>
+        <div class="arch-shop"><b>makeshop</b><span>필수옵션</span></div>
+        <div class="arch-shop"><b>godo</b><span>NetFunnel</span></div>
+        <div class="arch-shop"><b>dynamic</b><span>SPA·프로브</span></div>
+      </div>
+      <div class="arch-cap">main/shops/&lt;id&gt;.js — 77개 모듈(활성 64) · 각 샵의 설정 + 분류 fieldPreset</div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. CH.5 임팩트 — 밤 -->
+<section class="chapter" id="impact">
+  <div class="wrap">
+    <div class="chapter-head reveal">
+      <p class="eyebrow">CH.5 — 임팩트</p>
+      <h2>도입 전 / 후</h2>
+      <p class="oneliner">기술이 아니라 <b>문제</b>에서 출발했고, 수치로 말합니다. 실무 워크플로(소싱 → 공유 → 구매) 안에서 병목을 도구로 바꿨습니다.</p>
+    </div>
+    <div class="bento">
+      <div class="bento-card reveal"><h3>출석 처리</h3><p>하루 30분 수기 → 3분. 선생님의 시간을 아이들에게 돌려줌.</p></div>
+      <div class="bento-card reveal" data-delay="1"><h3>이벤트 소싱</h3><p>수십 개 사이트 수작업 순회 → 하루 5~6회 자동 수집·검증.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 7. MATRIX — 역량→증거 -->
+<section class="matrix" id="matrix">
+  <div class="wrap">
+    <div class="chapter-head reveal">
+      <p class="eyebrow">CAPABILITY MATRIX</p>
+      <h2>주장마다, 증거</h2>
+      <p class="oneliner">8개 역량 축 — 각 항목은 이 페이지의 섹션·케이스 스터디·수치로 연결됩니다. 증거 없는 주장은 싣지 않습니다.</p>
+    </div>
+    <div class="matrix-grid">
+      <a class="axis reveal" href="#ai"><span class="k">1</span><div><h3>LLM 애플리케이션</h3><p>tool-use 멀티스텝 에이전트, structured output, 컨텍스트 관리.</p><div class="to">→ CH.3 AI · 구글폼 에이전트</div></div></a>
+      <a class="axis reveal" href="#ai"><span class="k">2</span><div><h3>AI 신뢰성·평가</h3><p>골든셋 회귀 하네스, 결정적 가드레일, 정확성 감사.</p><div class="to">→ CH.3 · 케이스 스터디 ③</div></div></a>
+      <a class="axis reveal" href="#automation"><span class="k">3</span><div><h3>데이터·웹 자동화</h3><p>64샵·12플랫폼, anti-bot 대응, 주문서 실측 파이프라인.</p><div class="to">→ CH.2 자동화</div></div></a>
+      <a class="axis reveal" href="#reliability"><span class="k">4</span><div><h3>소프트웨어 기본기</h3><p>테스트 1,097 · 커밋 468 · 플랫폼 디스패치 아키텍처.</p><div class="to">→ CH.4 신뢰성</div></div></a>
+      <a class="axis reveal" href="#reliability"><span class="k">5</span><div><h3>운영·신뢰성(SRE)</h3><p>서킷 브레이커, 인증 자동복구, 장애 진단 노트.</p><div class="to">→ CH.4 · 케이스 스터디 ①②</div></div></a>
+      <a class="axis reveal" href="#ai-native"><span class="k">6</span><div><h3>AI-native 워크플로</h3><p>Claude Code + 서브에이전트/워크플로 오케스트레이션 + 감사 루프.</p><div class="to">→ AI-NATIVE · 케이스 스터디 ④</div></div></a>
+      <a class="axis reveal" href="#impact"><span class="k">7</span><div><h3>제품·비즈니스 임팩트</h3><p>문제에서 출발, 수치로 증명(30분→3분, 자동 5~6회/일).</p><div class="to">→ CH.5 임팩트</div></div></a>
+      <a class="axis reveal" href="#deep-dives"><span class="k">8</span><div><h3>커뮤니케이션</h3><p>런북·케이스 스터디·문서 감사. 이 포트폴리오 자체가 증거.</p><div class="to">→ DEEP DIVES</div></div></a>
+    </div>
+  </div>
+</section>
+
+<!-- 8. AI-NATIVE -->
+<section class="chapter" id="ai-native">
+  <div class="wrap">
+    <div class="chapter-head reveal">
+      <p class="eyebrow">AI-NATIVE</p>
+      <h2>어떻게 혼자<br>9만 줄을 운영하는가</h2>
+      <p class="oneliner">추적 소스 <b>약 9만 줄</b>(앱 본체 ~5.7만)·<b>64개 샵</b>을 한 사람이 유지합니다. 손이 빠른 게 아니라, <b>검증을 확장</b>하는 워크플로입니다.</p>
+    </div>
+    <div class="bento">
+      <div class="bento-card reveal"><h3>규약을 코드로 (CLAUDE.md)</h3><p>샵별/공통 편집 경계·git 위생·프로세스 보호를 문서로 못박아 매 세션 주입. 같은 실수를 반복하지 않는 표준.</p></div>
+      <div class="bento-card reveal" data-delay="1"><h3>병렬 검증 오케스트레이션</h3><p>독립 하위 작업을 여러 에이전트에 팬아웃. "혼자 못 보는 것"을 여러 눈으로 본다.</p></div>
+      <div class="bento-card reveal" data-delay="2"><h3>적대적 리뷰</h3><p>만든 것을 스스로 반박. 그럴듯하지만 틀린 것을 머지 전에 거른다.</p></div>
+      <div class="bento-card reveal" data-delay="3"><h3>메모리 · 감사 루프</h3><p>배운 것을 파일 메모리로 축적, 상시 하네스로 회귀를 막는다. 문서화가 감사를 강제해 잠재 버그를 잡은 실사례(PR #66).</p></div>
+    </div>
+    <p class="reveal" style="margin-top:28px;font-size:15.5px;color:var(--muted)">다섯 축이 하루에 다 돈 사건 — 규약 → 병렬 검증 → 적대적 리뷰 → 문서화 중 버그 발견 → 당일 수정을 <a href="case-studies/04-ai-native-워크플로.html" style="color:var(--accent);font-weight:700;text-underline-offset:3px">케이스 스터디 ④에서 전문으로 읽기 →</a></p>
+  </div>
+</section>
+
+<!-- 9. DEEP DIVES -->
+<section class="chapter" id="deep-dives">
+  <div class="wrap">
+    <div class="chapter-head reveal">
+      <p class="eyebrow">DEEP DIVES</p>
+      <h2>케이스 스터디</h2>
+      <p class="oneliner">문제 → 진단 → 설계 → 결과 → 배운 것. 모든 수치·커밋은 저장소에서 재확인한 근거 대조표 포함. 각 편은 <b>본문과 일관된 딥다이브 페이지</b>로 열립니다.</p>
+    </div>
+    <div class="dives">
+      <a class="dive reveal" href="case-studies/01-sleep-guard-장애진단.html"><div class="tag">① 장애 진단</div><h3>수면이 만든 가짜 장애</h3><p>새벽 600s 타임아웃 오탐의 근본원인을 관찰→가설→검증으로 추적, sleep-guard로 근절.</p><div class="go">읽기 →</div></a>
+      <a class="dive reveal" data-delay="1" href="case-studies/02-antibot-인증자동복구.html"><div class="tag">② 인증 설계</div><h3>봇으로 몰리지 않고 세션 지키기</h3><p>봇 감지·안티봇·조용한 만료의 세 벽을 CDP 캡처·백오프·닫힌 루프로.</p><div class="go">읽기 →</div></a>
+      <a class="dive reveal" data-delay="2" href="case-studies/03-정확성감사-eval하네스.html"><div class="tag">③ 신뢰성</div><h3>스크래퍼가 맞는지 어떻게 아는가</h3><p>정확성 감사를 상시 평가 하네스로 승격. 95.5% → 100%.</p><div class="go">읽기 →</div></a>
+      <a class="dive reveal" data-delay="3" href="case-studies/04-ai-native-워크플로.html"><div class="tag">④ 워크플로</div><h3>혼자 9만 줄을 운영하는 법</h3><p>규약·병렬 검증·적대적 리뷰·메모리·감사 루프 — 다섯 축이 하루에 다 돈 사건.</p><div class="go">읽기 →</div></a>
+    </div>
+  </div>
+</section>
+
+<!-- 10. CONTACT — 밤이 다시 새벽으로 -->
+<section class="contact" id="contact">
+  <div class="wrap">
+    <h2 class="reveal"><span class="grad-text">다음 현장</span>을<br>찾고 있습니다.</h2>
+    <p class="sub reveal" data-delay="1">사람에게만 쌓이던 업무 경험을, 회사에 남는 시스템으로 바꾸는 일을 합니다.</p>
+    <div class="contact-actions reveal" data-delay="2">
+      <a class="btn btn-fill" href="이력서.pdf" download>이력서 다운로드</a>
+      <a class="btn btn-ghost" href="https://github.com/UBIN2612" target="_blank" rel="noopener">GitHub 방문 ↗</a>
+    </div>
+    <p class="contact-mail reveal" data-delay="3"><a href="mailto:ubin0612@icloud.com">ubin0612@icloud.com</a></p>
+  </div>
+</section>
+</main>
+
+<footer>
+  <img src="assets/favicon.svg" alt="">
+  <span>© 2026 HWANG YUBIN — BUILT BY HAND, RUN IN PRODUCTION</span>
+</footer>
+
+<script>
+(function(){
+  var root = document.documentElement, body = document.body;
+  var reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* 스크롤 리빌 */
+  var io = new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){ e.target.classList.add('on'); io.unobserve(e.target); } });
+  },{threshold:.14,rootMargin:'0px 0px -6% 0px'});
+  document.querySelectorAll('.reveal').forEach(function(el){ io.observe(el); });
+
+  /* 데모 비디오 — 화면에 들어올 때만 재생(성능), reduced-motion 이면 정지(포스터 유지) */
+  var vids = document.querySelectorAll('video[data-autoplay]');
+  if(vids.length && !reduced){
+    var vio = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if(e.isIntersecting){ e.target.play().catch(function(){}); }
+        else { e.target.pause(); }
+      });
+    },{threshold:.25});
+    vids.forEach(function(v){ vio.observe(v); });
+  }
+
+  /* 숫자 카운트업 */
+  var cio = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting) return; cio.unobserve(e.target);
+      var el = e.target, target = +el.dataset.count;
+      if(reduced){ el.textContent = target.toLocaleString(); return; }
+      var t0 = performance.now(), dur = 1400;
+      (function tick(t){
+        var p = Math.min((t-t0)/dur,1), ease = 1-Math.pow(1-p,3);
+        el.textContent = Math.round(target*ease).toLocaleString();
+        if(p<1) requestAnimationFrame(tick);
+      })(t0);
+    });
+  },{threshold:.6});
+  document.querySelectorAll('[data-count]').forEach(function(el){ cio.observe(el); });
+
+  /* 세계 토큰(dawn/day/night) — 하늘 광량과 정렬해 이산 전환 (가독성) */
+  function setWorld(p){
+    body.classList.toggle('dawn', p < 0.14);
+    body.classList.toggle('day', p >= 0.14 && p < 0.6);
+    /* p >= 0.6 → 밤(:root 기본값): 하늘이 어두워지는 지점에서 글자도 밝게 */
+  }
+
+  /* ── 시그니처 스크럽: 스크롤 → --day(0..1), 구간별(piecewise) ──
+     낮(성산)은 밝게 유지(0→0.55), 노을→밤은 자동화 구간에서(0.55→1). */
+  var midEl = document.getElementById('automation'); /* 이 근처까지 낮 */
+  var endEl = document.getElementById('ai');          /* 이 지점부터 밤 고정 */
+  var S = 1, E = 2;
+  function measure(){
+    S = Math.max(1, (midEl ? midEl.offsetTop : innerHeight*2) - innerHeight*0.5);
+    E = Math.max(S + 1, (endEl ? endEl.offsetTop : innerHeight*4) - innerHeight*0.72);
+  }
+  function progress(){
+    var y = scrollY;
+    if (y <= S) return Math.max(0, 0.55 * (y / S));         /* 낮: 0 → 0.55 */
+    return Math.min(1, 0.55 + 0.45 * ((y - S) / (E - S)));  /* 노을→밤: 0.55 → 1 */
+  }
+  function apply(p){ root.style.setProperty('--day', p.toFixed(4)); setWorld(p); }
+
+  if(reduced){
+    /* 정적 대체: 섹션별로 --day 를 이산 값으로 (CSS transition 이 부드럽게 크로스페이드) */
+    measure();
+    var marks = [
+      ['hero',0], ['numbers',0.12], ['problem',0.4], ['automation',0.82],
+      ['ai',1], ['reliability',1], ['impact',1], ['matrix',1],
+      ['ai-native',1], ['deep-dives',1], ['contact',1]
+    ];
+    var rio = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if(!e.isIntersecting) return;
+        for(var i=0;i<marks.length;i++){ if(marks[i][0]===e.target.id){ apply(marks[i][1]); break; } }
+      });
+    },{rootMargin:'-45% 0px -45% 0px'});
+    marks.forEach(function(m){ var el=document.getElementById(m[0]); if(el) rio.observe(el); });
+    apply(0);
+  } else {
+    var ticking = false;
+    function onScroll(){
+      if(ticking) return; ticking = true;
+      requestAnimationFrame(function(){
+        apply(progress());
+        ticking = false;
+      });
+    }
+    addEventListener('scroll', onScroll, {passive:true});
+    addEventListener('resize', function(){ measure(); onScroll(); });
+    measure(); onScroll();
+  }
+
+  /* 네비 활성 표시 */
+  var links = document.querySelectorAll('[data-nav]'), map = {};
+  links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+  var nio = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting) return;
+      links.forEach(function(a){ a.classList.remove('active'); });
+      var a = map[e.target.id]; if(a) a.classList.add('active');
+    });
+  },{rootMargin:'-40% 0px -52% 0px'});
+  ['problem','automation','ai','reliability','matrix','deep-dives','contact'].forEach(function(id){
+    var el = document.getElementById(id); if(el) nio.observe(el);
+  });
+
+  /* 진행선 */
+  var bar = document.querySelector('.progress');
+  addEventListener('scroll', function(){
+    var h = document.documentElement;
+    bar.style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';
+  },{passive:true});
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로그인해야 보이는 이벤트 — 봇으로 몰리지 않고 세션을 자동으로 지키는 법 — 황유빈 케이스 스터디</title>
+<meta name="description" content="로그인해야 보이는 이벤트 — 봇으로 몰리지 않고 세션을 자동으로 지키는 법 — K-pop 이벤트 스크래퍼 케이스 스터디. 모든 수치·커밋은 저장소에서 재확인.">
+<link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+<link rel="stylesheet" href="case.css">
+</head>
+<body>
+<div class="rail" aria-hidden="true"></div>
+<div class="topbar">
+  <a class="back" href="../index.html#deep-dives"><span class="ar">←</span> 포트폴리오</a>
+  <span class="brand"><img src="../assets/favicon.svg" alt="">HWANG YUBIN · DEEP DIVE</span>
+</div>
+
+<header class="cs-head"><div class="wrap">
+  <div class="cs-kicker">케이스 스터디 · ② 인증 설계</div>
+  <h1>로그인해야 보이는 이벤트 — 봇으로 몰리지 않고 세션을 자동으로 지키는 법</h1>
+  <p class="cs-prov">K-pop 이벤트 스크래퍼 (64개 쇼핑몰, 단독 운영)&nbsp;&nbsp;·&nbsp;&nbsp;모든 수치·커밋은 스크래퍼 repo 에서 확인. 커밋 해시·파일 경로 명시.</p>
+</div></header>
+
+<main><article class="wrap">
+<h2>한 문단 요약</h2>
+<p>이벤트 중 상당수는 <strong>로그인해야</strong> 보인다 — 회원 전용 목록이거나, 주문서(구글폼의 입력이 되는 결제창 항목)를 실제로 열어봐야 하기 때문이다. 그런데 자동화로 로그인을 하려는 순간 세 종류의 벽에 막힌다: (1) 쇼핑몰의 <strong>봇 감지</strong>가 자동 브라우저 자체를 차단하고, (2) cafe24 같은 플랫폼은 반복 로그인을 <strong>보이지 않는 안티봇</strong>으로 잠그며, (3) 어렵게 얻은 세션도 <strong>조용히 만료</strong>돼 결제창에서 로그인 화면으로 튕긴다. 이 글은 이 세 벽을 각각 <strong>실브라우저 캡처 · 자극하지 않는 자동복구 · 닫힌 루프 에스컬레이션</strong>으로 넘긴 설계 기록이다. (참고로 이 과정에서 "자동 로그인 25개 샵"이라는 내 초기 메모가 틀렸음을 코드로 재확인해 <strong>23개</strong>로 바로잡았다 — §6.)</p>
+<hr>
+<h2>1. 문제 — 로그인 자동화를 막는 세 겹의 벽</h2>
+<p>스크래퍼는 로그인 세션이 필요한 샵을 위해 자격증명·쿠키·<code>storageState</code>(쿠키 + localStorage)를 보관하고, 스크랩/결제창 측정 때 주입한다. 문제는 <strong>세션을 얻고 유지하는 것 자체</strong>가 어렵다는 것이다.</p>
+<ul><li><strong>벽 ①(봇 감지)</strong> — ktown4u·linc_fan_shop(stayge SSO)·bizent·nemozshop 등은 Playwright 로 띄운 브라우저를 <strong>stealth 를 붙여도</strong> 봇으로 감지해 막는다. 자동 로그인 시도 자체가 성립하지 않는다.</li><li><strong>벽 ②(리스크 기반 안티봇)</strong> — cafe24/makeshop/godo 계열은 짧은 시간에 반복 로그인하면 <strong>보이지 않는</strong> <code>CheckCaptcha</code>/단일세션 무효화로 ~15분 잠금을 건다. "로그인 코드를 고치려고 반복 테스트" 하는 것만으로 계정을 잠가버려, 제대로 고친 코드조차 세션을 못 만든다.</li><li><strong>벽 ③(조용한 만료)</strong> — 어렵게 캡처한 세션도 쿠키가 시간이 지나며 빠져(decay) 어느 날 결제창에서 <code>/member/login</code> 으로 튕긴다. 단독 운영이라 <strong>사람이 매번 다시 로그인할 수 없다</strong> — 자동으로 감지하고 복구해야 한다.</li></ul>
+<p>세 벽은 성격이 달라서 <strong>하나의 해법으로 못 넘는다.</strong> 각각에 맞는 대응을 설계했다.</p>
+<hr>
+<h2>2. 벽 ① 대응 — 실브라우저 CDP 캡처 (로그인 방법의 기본이 됨)</h2>
+<p>봇 감지의 정공법은 <strong>"봇처럼 안 보이는 브라우저"를 만드는 것이 아니라, 이미 로그인을 통과한 진짜 브라우저의 세션을 그대로 가져오는 것</strong>이다. 운영자가 자기 실브라우저(Chrome/Whale)에서 대상 샵에 로그인하면 — 그건 진짜 브라우저라 봇 감지를 이미 통과했다 — 스크래퍼가 그 브라우저에 <strong>원격 디버깅 (CDP)으로 붙어</strong> 세션을 읽어온다.</p>
+<pre class="code"><code>운영자 실브라우저 (이미 로그인 통과, 봇 감지 무관)
+        │  --remote-debugging-port=9222
+        ▼
+scripts/capture-via-cdp.js  ── connectOverCDP ──▶  storageState 저장
+        │                                          (쿠키 + 탭별 localStorage)
+        ▼
+storage-state.secret/&lt;shop&gt;.json  ──▶  스크랩·결제창 측정 때 주입</code></pre>
+<ul><li>도구: <code>scripts/capture-via-cdp.js</code>(최초 커밋 <code>408e7fe</code>, 2026-06-15) → 현재는 공용 <code>main/_cdp-capture.js</code> 로 로직 이전(앱 내 "로그인 캡처" 버튼과 CLI 가 같은 구현 공유).</li><li>저장물은 <strong><code>storageState</code></strong> — 쿠키뿐 아니라 <strong>탭별 localStorage</strong> 까지. ktown4u·linc 처럼 세션 토큰을 쿠키가 아닌 <strong>localStorage 의 Bearer 토큰</strong>으로 들고 있는 샵은 쿠키만 복사하면 로그인이 안 되기 때문이다(<code>_cdp-capture.js:259</code> — CDP <code>storageState()</code>는 쿠키만 잡아서 localStorage 는 탭을 돌며 직접 읽어 병합).</li><li>운영자의 실브라우저 <strong>창은 닫지 않는다</strong>(연결만 붙었다 뗀다). 왜 CDP 가 기본인지는 코드 주석에 명시돼 있다(<code>capture-via-cdp.js:3</code>): *"봇 보호 샵은 Playwright 로 띄운 어떤 브라우저도 막고, 최신 쿠키 DB 는 앱 바운드 암호화를 쓴다 → 견고한 경로는 운영자가 자기 브라우저에서 로그인하는 것. 봇 감지도 복호화도 없다."* 예전의 앱 내 Electron 로그인 창은 cafe24/makeshop 안티봇에 막혀 노이즈 쿠키만 잡았고, 이걸 대체했다(<code>login-capture.js:4</code>).</li></ul>
+<h3>조용히 auth 쿠키를 누락하던 버그 (<code>bb42247</code>, 2026-07-07)</h3>
+<p>CDP 캡처에는 <strong>재현 가능한 함정</strong>이 하나 있었다. 완전히 로그인해서 재캡처해도 주문서에서 계속 로그인 화면으로 튕겼다. 원인은 접속 주소 한 글자 차이였다:</p>
+<pre class="code"><code>// main/_cdp-capture.js:247 (요약 주석)
+// ⚠️ localhost 를 써라. 127.0.0.1 이 아니라.
+//   connectOverCDP 에서 둘은 같은 브라우저의 "서로 다른 쿠키 뷰"에 붙는다 —
+//   localhost = 라이브 탭 컨텍스트(로그인 직후의 fresh auth 쿠키),
+//   127.0.0.1 = stale whole-store 뷰 → 핵심 member 쿠키를 누락.
+//   (dearmymuse: localhost 44/32 auth 포함 vs 127.0.0.1 3405/26 누락 — 결정적 재현)
+const b = await chromium.connectOverCDP(`http://localhost:${port}`);</code></pre>
+<p>같은 브라우저인데 <code>localhost</code> 로 붙으면 로그인 직후의 신선한 member 세션 쿠키(cafe24 의 <code>ec_mem_level</code> 등)를 잡고, <code>127.0.0.1</code> 로 붙으면 오래된 whole-store 뷰라 <strong>그 쿠키들을 빠뜨린다.</strong> 게다가 쿠키는 raw <code>Storage.getCookies</code>(브라우저 레벨, stale) 말고 Playwright <code>contexts()[0].storageState().cookies</code>(컨텍스트 실제 jar)로 읽어야 auth 쿠키가 온전히 들어온다. 이 두 가지를 고쳐(<code>bb42247</code>) 재캡처가 신선한 세션을 확실히 잡게 했다. 절차 런북은 <code>FUTURE_PROBE_WORK.md</code> §B·§E 에 있다.</p>
+<hr>
+<h2>3. 벽 ② 대응 — cafe24 안티봇을 "자극하지 않기"</h2>
+<p>봇 감지가 브라우저를 막는다면, cafe24 의 리스크 기반 안티봇은 <strong>행동 패턴</strong>을 막는다. 여기서 해법은 기술이 아니라 <strong>절제</strong>다 — 반복·오탐·조급함을 코드로 억제한다.</p>
+<p><strong>(1) 반복하지 않는다 — 플랫폼 스로틀.</strong> cafe24/makeshop/godo 는 자동 재로그인 대상에서 빼고, 수동 재시도조차 스로틀한다.</p>
+<pre class="code"><code>// main/ipc-handlers.js:2388 (요약)
+// 리스크 기반 안티봇(cafe24/makeshop/godo): 짧은 시간 반복 로그인 시
+// 보이지 않는 CheckCaptcha/단일세션으로 ~15분 잠금이 걸린다.
+const ANTIBOT_LOGIN_PLATFORM = /^(cafe24|makeshop|godo)/;
+const MANUAL_LOGIN_THROTTLE_MS = 60 * 1000;</code></pre>
+<p>만료가 감지돼도 이 계열은 <strong>자동 로그인을 시도하지 않고 알림만</strong> 띄운다(<code>login-capture-auto.js</code> — 샵당 최소 재시도 간격 20시간, 사실상 "자동으로는 안 함, 사람에게 알림"). 안티봇을 트리거하느니 사람 한 번 부르는 게 낫다.</p>
+<p><strong>(2) 오탐하지 않는다 — 엄격한 로그인 성공 판정 (<code>d715a79</code>).</strong> 처음엔 로그인 성공을 느슨한 정규식 (<code>마이페이지|주문조회|회원정보 …</code>)으로 판정했는데, 이 단어들은 <strong>로그아웃 상태의 헤더에도</strong> 있다. 그래서 로그인이 실패했는데도 "성공"으로 오판해 <strong>익명 쿠키를 유효한 세션인 양</strong> 저장하는 사고가 났다. 판정을 엄격하게 바꿨다:</p>
+<pre class="code"><code>// main/auto-relogin.js:33, :324
+const COMMON_SUCCESS = /로그아웃|Sign\s?Out|Log\s?-?\s?Out/i;   // "로그아웃"이 보인다 = 로그인됨
+const loggedIn = !bouncedToLogin &amp;&amp; spec.successText.test(bodyText);  // + 로그인 페이지로 튕겼나(음성 신호)</code></pre>
+<p>"로그아웃" 링크는 <strong>로그인했을 때만</strong> 보인다 — 이걸 성공 신호로, 로그인 페이지 바운스를 실패 신호로 이중 확인한다.</p>
+<p><strong>(3) 헛클릭하지 않는다 — decoy 앵커 Enter 폴백 (<code>9870f1c</code>, 2026-06-05 진단).</strong> cafe24 로그인 폼에서 generic <code>a:has-text("로그인")</code> 셀렉터가 진짜 로그인 링크가 아니라 <strong>네비게이션의 미끼(decoy) 앵커</strong>를 먼저 잡아, 클릭해도 POST 가 안 나갔다. 비밀번호 칸에서 <strong>Enter 로 제출하는 폴백</strong> + 샵별 <code>submitSelectors</code> 오버라이드로 해결했다.</p>
+<hr>
+<h2>4. 벽 ③ 대응 — 조용한 만료의 닫힌 루프 자동복구 (<code>26d5634</code>)</h2>
+<p>세션은 반드시 만료된다. 관건은 <strong>만료를 스스로 감지하고, 안티봇을 건드리지 않는 속도로 복구하며, 안 되면 물러나 사람을 부르는</strong> 닫힌 루프다. <code>main/auth-recovery.js</code>(커밋 <code>26d5634</code> "인증 자동복구 닫힌 루프 — 실패 에스컬레이션·가시화·수동 해제")가 이 상태 기계다.</p>
+<p><strong>언제 복구하나 (감지).</strong> 스크랩/스케줄러가 도는 sweep 이 각 샵의 상태를 본다 — shop-health 가 <code>session_expired</code> 이거나 쿠키 건강도가 <code>expired</code>/<code>likely-expired</code> 이면 복구 대상 (<code>ipc-handlers.js:2675</code> <code>needsRelogin</code>).</p>
+<p><strong>얼마나 물러서나 (에스컬레이션).</strong> 실패할수록 쿨다운을 늘리고, 3연속 실패면 자동 재시도를 멈춘다:</p>
+<pre class="code"><code>// main/auth-recovery.js:21-26
+const COOLDOWN_BY_FAILCOUNT = [
+  6 * 60 * 60 * 1000,   // 성공 직후/첫 시도: 6h (안티봇 보호 — 성공해도 6h 안엔 재시도 안 함)
+  6 * 60 * 60 * 1000,   // 1회 실패 후: 6h
+  24 * 60 * 60 * 1000,  // 2회 실패 후: 24h
+];
+const MANUAL_DISABLE_AFTER_FAILS = 3;   // 3연속 실패 → disabledUntil:'manual'</code></pre>
+<pre class="code"><code>성공 ──▶ failCount=0, 6h 바닥(안티봇 보호)
+1회 실패 ──▶ 6h 후 재시도
+2회 실패 ──▶ 24h 후 재시도
+3회 실패 ──▶ 'manual' — 사람이 [재시도 허용] 누를 때까지 자동 재시도 정지
+성공하면 즉시 리셋(failCount=0, disabledUntil=null)</code></pre>
+<p>핵심은 <strong>성공해도 6h 바닥</strong>을 둔 것이다 — 세션이 멀쩡한데도 자주 재로그인하면 그 자체가 안티봇을 부르므로, "필요할 때만, 드물게"를 강제한다. 3연속 실패 시 <code>'manual'</code> 로 못박아, 깨진 계정에 무한 재시도해 잠금을 악화시키는 걸 막는다. (구형 kv <code>autoReloginAttempts</code> 는 새 <code>autoReloginState</code> 로 자동 마이그레이션.)</p>
+<p><strong>어떻게 사람에게 넘기나 (가시화).</strong> sweep 결과는 kv <code>lastAuthRecoveryReport</code> 로 저장돼 UI <code>AuthRecoveryStatus</code> 패널(쿠키 건강 패널 안)에 뜨고, <code>[재시도 허용]</code> 버튼으로 수동 해제할 수 있다. 실패가 있으면 데스크톱 알림 <code>authRecoveryFailed</code> 가 뜬다(24h 스로틀, 방금 <code>'manual'</code> 로 막힌 건은 한 번은 즉시 통지). 자동복구가 <strong>조용히 실패하지 않게</strong> — 닫힌 루프의 마지막 고리다.</p>
+<p>이 설계는 유닛 테스트(<code>tests/unit/auth-recovery*.test.js</code>)로 에스컬레이션·리셋·게이트가 검증된다. 파일 이력은 도입(<code>26d5634</code>) + 방어 보강(<code>d715a79</code>, 감사에서 "failCount≥3인데 시각이 비면 무한 24h 재시도로 새는" F10 결함 수정) 두 커밋뿐이다.</p>
+<hr>
+<h2>5. 전체 로그인 체계 — 4가지 메커니즘</h2>
+<p>세 벽에 대한 대응이 모여, 샵의 인증 방식에 따라 <strong>4가지 로그인 메커니즘</strong>이 된다.</p>
+<div class="tbl"><table><thead><tr><th>메커니즘</th><th>대상</th><th>근거</th></tr></thead><tbody><tr><td>① 자동 폼 채움 (자격증명 복호화 → 로그인)</td><td>cafe24/Shopify 등 표준 폼 20개 샵</td><td><code>auto-relogin.js</code> <code>performLogin</code>, <code>LOGIN_SPECS</code></td></tr><tr><td>② <code>storageState</code> 주입 (쿠키+localStorage)</td><td>localStorage/Bearer 토큰 SSO 샵 (ktown4u·minirecord)</td><td><code>scraper-dynamic.js:97</code>, <code>checkout-probe.js:2367</code></td></tr><tr><td>③ 실브라우저 CDP export</td><td>봇 감지 샵 (ktown4u·linc·bizent·nemoz)</td><td><code>_cdp-capture.js</code>, §2</td></tr><tr><td>④ 수동 SSO 캡처 (<code>manualOnly</code>)</td><td>2-step/소셜 SSO 3개 샵 (makestar·bstageplus·mymusictaste)</td><td><code>auto-relogin.js:296</code></td></tr></tbody></table></div>
+<p>주입은 <strong><code>storageState</code> 우선, 쿠키 리플레이는 폴백</strong>이다 — <code>storage-state.secret/&lt;id&gt;.json</code> 이 있으면 그걸(쿠키+localStorage+IndexedDB) 컨텍스트에 주입하고, 없을 때만 쿠키를 넣는다 (<code>checkout-probe.js:2440</code>). SSO/Bearer 샵은 쿠키만으론 로그인이 안 되므로 이 우선순위가 중요하다. (<code>storage-state.secret/</code> 는 gitignore — 세션 비밀은 저장소에 안 올라간다.)</p>
+<p>진단 도구도 갖췄다: <code>scripts/relogin-bridge.js</code>(헤드리스 재로그인 → 결제 프로브가 보는 <code>cookies.secret.json</code> 으로 세션 브리지), <code>scripts/probe-one.js</code>(단일 샵 결제창 도달을 CLI 로 재현).</p>
+<h3>정직한 커버리지 — "25"가 아니라 23</h3>
+<p>이 글을 쓰며 <strong>내 메모의 "자동 로그인 25개 샵"이 틀렸음을 코드로 확인</strong>했다. 실제 <code>LOGIN_SPECS</code> (자동 재로그인 레지스트리, <code>auto-relogin.js:65</code>)는 <strong>23개</strong>이고, 그중 <strong>20개가 헤드리스 자동 로그인</strong>, <strong>3개는 <code>manualOnly</code></strong>(SSO/2-step 라 자동 폼이 안 먹음)다. <code>requiresAuth</code> 를 켠 샵 모듈은 <strong>28개</strong>(그중 5개는 LOGIN_SPECS 밖 — SSO/토큰형이라 ②③ 경로). "25"는 코드가 아니라 초기 기획 문서(<code>docs/archive/cookie-track-guide.md</code> "회원전용 25개 샵 … 약 20개 자동 회복 가능")의 <strong>대상 목록 수</strong>였고, 등록된 자동 로그인 스펙 수가 아니었다. 포트폴리오에는 <strong>코드로 재확인한 23/20/28</strong>만 싣는다.</p>
+<hr>
+<h2>6. 배운 것</h2>
+<ol><li><strong>봇 감지는 "더 은밀한 봇"으로 못 이긴다 — 진짜를 빌린다.</strong> stealth 로 자동 브라우저를 위장하는 군비경쟁 대신, 이미 로그인을 통과한 운영자의 실브라우저 세션을 CDP 로 가져오는 게 가장 견고했다. 싸울 수 없는 벽은 우회한다.</li><li><strong>안티봇 앞에서는 절제가 기능이다.</strong> 반복 스로틀, 성공해도 6h 바닥, 3연속 실패 시 자동 정지 — "덜, 드물게, 물러나며"를 코드로 강제한 것이 잠금을 피하는 진짜 방어였다. 조급한 재시도는 복구가 아니라 악화다.</li><li><strong>오탐은 조용한 오염을 만든다.</strong> 느슨한 성공 판정이 <strong>익명 쿠키를 유효 세션으로 저장</strong>해, 눈에 안 띄는 곳에서 데이터를 썩혔다. 인증 성공 판정은 관대함이 아니라 <strong>엄격함</strong>이 안전하다 (<code>로그아웃</code> 존재 + 로그인 바운스 이중 확인).</li><li><strong>같은 브라우저도 접속 경로에 따라 다른 걸 본다.</strong> <code>localhost</code> vs <code>127.0.0.1</code> 한 글자가 서로 다른 쿠키 뷰에 붙어 auth 쿠키를 통째로 누락시켰다. "당연히 같겠지"를 의심하고 결정적으로 재현 (44/32 vs 3405/26)한 것이 버그를 잡았다.</li><li><strong>자동복구는 닫힌 루프여야 한다.</strong> 감지 → 백오프 → 실패 시 사람에게 가시화까지 이어져야 "자동"이 신뢰가 된다. 조용히 실패하는 자동화는 없는 것만 못하다 — 그래서 마지막 고리를 알림·수동 해제로 닫았다.</li><li><strong>자기 수치도 검증 대상이다.</strong> "25개"라고 믿던 커버리지가 코드로 보니 23개였다. 포트폴리오의 숫자는 기억이 아니라 <strong>재확인한 것</strong>만 싣는다(데모 무결성).</li></ol>
+<hr>
+<h3>근거 (repo 대조)</h3>
+<div class="tbl"><table><thead><tr><th>주장</th><th>근거</th></tr></thead><tbody><tr><td>봇 감지 → 실브라우저 CDP 캡처가 기본</td><td><code>scripts/capture-via-cdp.js</code>(최초 <code>408e7fe</code>, 2026-06-15), <code>main/_cdp-capture.js</code>, <code>login-capture.js:4</code>; 런북 <code>FUTURE_PROBE_WORK.md</code> §B·§E</td></tr><tr><td>storageState = 쿠키 + localStorage(Bearer)</td><td><code>_cdp-capture.js:259</code> (localStorage 탭별 병합), ktown4u/linc</td></tr><tr><td>localhost≠127.0.0.1 auth 쿠키 누락 버그</td><td><code>bb42247</code>(2026-07-07) <code>_cdp-capture.js:247-253</code>; dearmymuse 44/32 vs 3405/26 재현</td></tr><tr><td>cafe24 안티봇 스로틀 (CheckCaptcha/단일세션)</td><td><code>ipc-handlers.js:2388</code> `ANTIBOT_LOGIN_PLATFORM=/^(cafe24\</td><td>makeshop\</td><td>godo)/<code>, </code>MANUAL_LOGIN_THROTTLE_MS=60s<code>; </code>login-capture-auto.js`(만료 시 알림-only, 20h)</td></tr><tr><td>엄격 로그인 판정 (느슨→<code>로그아웃</code> + 바운스)</td><td><code>d715a79</code>; <code>auto-relogin.js:33</code>·<code>:324</code></td></tr><tr><td>decoy 앵커 Enter 폴백</td><td><code>9870f1c</code>(2026-06-05 진단); <code>auto-relogin.js:248-261</code></td></tr><tr><td>에스컬레이션 6h→24h→manual(3회) + 성공 리셋</td><td><code>26d5634</code>; <code>auth-recovery.js:21-26</code>(<code>COOLDOWN_BY_FAILCOUNT</code>, <code>MANUAL_DISABLE_AFTER_FAILS=3</code>), <code>:52-81</code></td></tr><tr><td>트리거·가시화 (sweep·패널·알림·수동해제)</td><td><code>ipc-handlers.js:2675</code>(<code>needsRelogin</code>)·<code>2722</code>(<code>lastAuthRecoveryReport</code>), <code>AuthRecoveryStatus.jsx</code>, <code>desktop-alerts.js</code>(<code>authRecoveryFailed</code>)</td></tr><tr><td>storageState 우선 주입, 쿠키 폴백</td><td><code>scraper-dynamic.js:97-105</code>·<code>:133</code>, <code>checkout-probe.js:2367-2375</code>·<code>:2440</code>; <code>storage-state.secret/</code> gitignore</td></tr><tr><td>커버리지 23/20/28 ("25"는 기획문서)</td><td><code>LOGIN_SPECS</code> 23개(<code>auto-relogin.js:65</code>), <code>manualOnly</code> 3개, <code>requiresAuth:true</code> 28개; <code>docs/archive/cookie-track-guide.md</code>(25=대상목록)</td></tr></tbody></table></div>
+<blockquote>정직성 참고: <code>main/ipc-handlers.js</code> 는 비텍스트 바이트가 섞여 있어 plain <code>grep</code> 이 매칭을 조용히 누락한다(<code>grep -a</code> 필요) — 이 파일의 sweep/안티봇/쿨다운 배선은 그 방식으로 확인했다. <code>storage-state.secret/</code>·<code>cookies.secret.json</code> 등 세션 비밀 파일은 열지 않고 <strong>주입하는 코드만</strong> 검증했다.</blockquote>
+<p><em>초고 · 2026-08-05 KST. 공개 게시 전 개인정보·API 키 없음 확인.</em></p>
+</article></main>
+
+<footer>
+  <div class="wrap">
+    <nav class="nav-dives" aria-label="다른 케이스 스터디">
+      <a href="01-sleep-guard-장애진단.html">① 수면이 만든 가짜 장애</a>
+      <a href="#" aria-current="page">② 봇으로 안 몰리고 세션 지키기</a>
+      <a href="03-정확성감사-eval하네스.html">③ 스크래퍼가 맞는지 아는 법</a>
+      <a href="04-ai-native-워크플로.html">④ 혼자 9만 줄 운영하는 법</a>
+    </nav>
+    <a class="back" href="../index.html#deep-dives"><span class="ar">←</span> 포트폴리오로 돌아가기</a>
+    <p class="copy" style="margin-top:18px">© 2026 HWANG YUBIN — BUILT BY HAND, RUN IN PRODUCTION</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var rail=document.querySelector(".rail");
+  addEventListener("scroll",function(){
+    var h=document.documentElement;
+    rail.style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight)*100||0)+"%";
+  },{passive:true});
+})();
+</script>
+</body>
+</html>
