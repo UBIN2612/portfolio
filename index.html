@@ -80,7 +80,7 @@ body{
 }
 p{text-wrap:pretty}
 ::selection{background:var(--accent);color:var(--accent-ink)}
-img{max-width:100%;display:block}
+img{max-width:100%;display:block;height:auto}
 a{color:inherit}
 
 /* ============================================================
@@ -240,7 +240,7 @@ body.day .glow::before,body.dawn .glow::before{opacity:.3}
 .frame-bar{display:flex;align-items:center;gap:6px;padding:11px 14px;border-bottom:1px solid var(--line)}
 .frame-bar i{width:9px;height:9px;border-radius:50%;background:var(--line-strong)}
 .frame-bar em{margin-left:8px;font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.04em}
-.frame img,.frame video{width:100%;display:block}
+.frame img,.frame video{width:100%;height:auto;display:block}
 .media-cap{margin-top:14px;font-size:12.5px;color:var(--muted);font-family:var(--font-mono);letter-spacing:.02em}
 
 /* 벤토 카드 그리드 (기술 포인트 / 파이프라인 등) */
@@ -295,7 +295,7 @@ body.day .glow::before,body.dawn .glow::before{opacity:.3}
 .media-cap b{color:var(--ink);font-weight:700}
 /* CH.3 실캡처 — 이미지 자체가 터미널 창(3점+타이틀)이라 별도 프레임바 없이 그림자만 */
 .shot{border-radius:16px;box-shadow:var(--shadow);margin-top:8px}
-.shot img{width:100%;display:block;border-radius:16px}
+.shot img{width:100%;height:auto;display:block;border-radius:16px}
 /* CH.3 gform·RAG 실캡처 2단 */
 .cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;align-items:start}
 .cap-grid .shot{margin-top:0}
