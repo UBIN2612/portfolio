@@ -1,8 +1,14 @@
 /* ============================================================
    딥다이브(케이스 스터디) 공용 스타일 — index.html 과 일관된
-   밤(night) 테마·브랜드 그라데이션·시스템 폰트(외부 CDN 0).
+   밤(night) 테마·브랜드 그라데이션. 폰트는 index 와 동일한 임베드
+   Pretendard 서브셋(외부 CDN 0)으로 어떤 환경에서도 동일 렌더.
    읽기 최적화: 좁은 컬럼 + 넉넉한 행간.
    ============================================================ */
+@font-face{
+  font-family:'PretendardKR';
+  src:url('../assets/pretendard-subset.woff2') format('woff2');
+  font-weight:45 930; font-style:normal; font-display:swap;
+}
 :root{
   --bg:#08090C; --glass:rgba(255,255,255,.045);
   --ink:#F2F3F7; --muted:#9AA1B3; --faint:#6B7285;
@@ -10,7 +16,7 @@
   --accent:#FF5C8A; --g1:#3DC97B; --g2:#FF5C8A;
   --grad:linear-gradient(100deg,var(--g1),var(--g2));
   --code-bg:rgba(255,255,255,.055);
-  --font-sans:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI","Malgun Gothic",sans-serif;
+  --font-sans:"PretendardKR","Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Segoe UI","Malgun Gothic",sans-serif;
   --font-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 *{margin:0;padding:0;box-sizing:border-box}
@@ -73,8 +79,8 @@ hr{border:none;height:1px;background:var(--line);margin:42px 0}
 code{font-family:var(--font-mono);font-size:.85em;background:var(--code-bg);
   border:1px solid var(--line);border-radius:6px;padding:2px 6px;color:#D4C0CB;white-space:nowrap}
 /* 코드 블록 */
-pre.code{background:#0b0d13;border:1px solid var(--line-strong);border-radius:14px;
-  overflow-x:auto;margin:22px 0;padding:18px 20px;box-shadow:0 20px 50px -30px rgba(0,0,0,.7)}
+pre.code{background:#0b0d13;border:1px solid var(--line-strong);border-radius:8px;
+  overflow-x:auto;margin:22px 0;padding:18px 20px;box-shadow:0 14px 44px -30px rgba(0,0,0,.6)}
 pre.code code{background:none;border:none;padding:0;color:#c6ccda;font-size:13px;line-height:1.9;white-space:pre}
 
 /* 인용(메타/콜아웃) */
@@ -83,7 +89,7 @@ blockquote{margin:22px 0;padding:14px 20px;border-left:3px solid transparent;
 blockquote strong{color:var(--ink)}
 
 /* 표 — 근거 대조표 */
-.tbl{overflow-x:auto;margin:24px 0;border:1px solid var(--line);border-radius:14px}
+.tbl{overflow-x:auto;margin:24px 0;border:1px solid var(--line);border-radius:10px}
 table{width:100%;border-collapse:collapse;font-size:13.8px}
 th,td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);
   padding:11px 14px;text-align:left;vertical-align:top;line-height:1.6}
