@@ -233,7 +233,7 @@ h1,h2,h3{letter-spacing:-.04em;text-wrap:balance;line-height:1.12}
 .num-row > div:first-child{border-left:0}
 .num-row strong{display:block;font-size:clamp(30px,4.8vw,58px);font-weight:800;
   letter-spacing:-.045em;font-variant-numeric:tabular-nums;line-height:1;color:var(--ink)}
-.num-row span{display:block;margin-top:12px;font-size:12.5px;color:var(--muted);font-weight:500;
+.num-row > div > span{display:block;margin-top:12px;font-size:12.5px;color:var(--muted);font-weight:500;
   font-family:var(--font-mono);letter-spacing:.02em}
 @media (max-width:680px){
   .num-row{grid-template-columns:repeat(2,1fr)}
@@ -487,7 +487,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
     <div class="num-row">
       <div class="reveal"><strong><span data-count="64">64</span></strong><span>자동 수집 쇼핑몰</span></div>
       <div class="reveal" data-delay="1"><strong><span data-count="1097">1,097</span></strong><span>자동 테스트 통과</span></div>
-      <div class="reveal" data-delay="2"><strong><span data-count="23">23</span></strong><span>자동 로그인 사이트</span></div>
+      <div class="reveal" data-delay="2"><strong><span data-count="2">2</span></strong><span>운영 중인 실서비스</span></div>
       <div class="reveal" data-delay="3"><strong>30분 → 3분</strong><span>현장 출석 처리</span></div>
     </div>
   </div>
@@ -520,6 +520,11 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
         </div>
         <p class="media-cap">실제 운영 중인 서비스의 구동 화면</p>
       </div>
+    </div>
+    <div class="stats reveal" data-delay="2" style="margin-top:clamp(26px,4vw,40px)">
+      <div class="stat"><strong>1인</strong><span>기획 · 개발 · 운영</span></div>
+      <div class="stat"><strong>4주</strong><span>첫 배포까지</span></div>
+      <div class="stat"><strong>3</strong><span>사용자 역할 · 학생 · 학부모 · 교사</span></div>
     </div>
   </div>
 </section>
@@ -569,12 +574,12 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
         <p class="eyebrow">실측</p>
         <h3>목록만 긁지 않고,<br>주문서까지 들어가 확인합니다</h3>
         <p>가능한 쇼핑몰은 <b>로그인 → 상품 → 장바구니 → 주문서</b>까지 자동 진입해, 고객에게 실제로 받아야 할 입력 항목(응모자명·생년월일·연락처 등)을 실측합니다.</p>
-        <p>사이트별 예외는 <b>77개 모듈</b>에 격리하고, 공통 엔진은 플래그로만 확장합니다. 한 사이트를 고쳐도 나머지가 깨지지 않는 구조입니다.</p>
+        <p>사이트별 예외는 <b>64개 샵을 포함한 77개 모듈</b>에 격리하고, 공통 엔진은 플래그로만 확장합니다. 한 사이트를 고쳐도 나머지가 깨지지 않는 구조입니다.</p>
       </div>
       <div class="block-media reveal" data-delay="1">
         <div class="frame">
           <div class="frame-bar"><i></i><i></i><i></i><em>kpop-event-scraper — 이벤트 그리드</em></div>
-          <img src="assets/app-grid.webp" width="1500" height="859" alt="실제 앱 화면 — 64개 쇼핑몰의 이벤트가 카드·마감 D-day·필터와 함께 표시된 그리드" loading="lazy">
+          <img src="assets/app-grid.webp" width="1500" height="859" alt="실제 앱 화면 — 64개 쇼핑몰의 이벤트가 카드·마감 D-day·필터와 함께 표시된 그리드">
         </div>
         <p class="media-cap">실제 운영 화면 — 64개 쇼핑몰의 이벤트가 상태와 함께 한 화면에</p>
       </div>
@@ -592,17 +597,17 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
     </div>
     <!-- 실캡처 ① eval 리포트 (centerpiece) — STEP 5 실제 CLI 출력 -->
     <div class="shot reveal">
-      <img src="assets/demo-eval-report.webp" width="1600" height="758" alt="npm run eval:golden 실행 결과 — 골든셋 112케이스 100% 통과(112/112), 회귀 새로 깨짐 0, 도입 95.5% → 결함 5건 수정 → 100%" loading="lazy">
+      <img src="assets/demo-eval-report.webp" width="1600" height="758" alt="npm run eval:golden 실행 결과 — 골든셋 112케이스 100% 통과(112/112), 회귀 새로 깨짐 0, 도입 95.5% → 결함 5건 수정 → 100%">
     </div>
-    <p class="media-cap tight">결정적 회귀 하네스 — 만료·품절·기간·분류 판정을 골든셋 112케이스에 재실행. 무엇이 새로 깨졌는지 매번 즉시 보고.</p>
+    <p class="media-cap tight">결정적 회귀 하네스 — 만료·품절·기간·분류 판정을 골든셋 112케이스에 재실행. 무엇이 새로 깨졌는지 매번 즉시 보고. <b>112/112 통과 · 새로 깨짐 0 · 95.5% → 100%</b></p>
     <!-- 실캡처 ②③ 구글폼 에이전트 · 런북 RAG (2단) -->
     <div class="cap-grid">
       <div class="reveal">
-        <div class="shot"><img src="assets/demo-gform-agent.webp" width="1400" height="665" alt="구글폼 초안 에이전트 실행 — 주문서 raw 실측 113필드를 문항 15개로 정리(약 7.5:1), tool 3회, 자동 발행 안 함" loading="lazy"></div>
+        <div class="shot"><img src="assets/demo-gform-agent.webp" width="1400" height="665" alt="구글폼 초안 에이전트 실행 — 주문서 raw 실측 113필드를 문항 15개로 정리(약 7.5:1), tool 3회, 자동 발행 안 함"></div>
         <p class="media-cap tight">구글폼 초안 에이전트 — 노이즈 <b>113필드 → 문항 15개</b>(≈7.5:1). tool-use 멀티스텝, 자동 발행 없이 사람 검토.</p>
       </div>
       <div class="reveal" data-delay="1">
-        <div class="shot"><img src="assets/demo-rag-answer.webp" width="1400" height="629" alt="런북 RAG 질의 — 답변에 근거 문서 경로·섹션([1][3]) 인용, 근거 없는 질문엔 '문서에 없음'" loading="lazy"></div>
+        <div class="shot"><img src="assets/demo-rag-answer.webp" width="1400" height="629" alt="런북 RAG 질의 — 답변에 근거 문서 경로·섹션([1][3]) 인용, 근거 없는 질문엔 '문서에 없음'"></div>
         <p class="media-cap tight">런북 RAG — 답마다 <b>근거 문서·섹션 인용</b>. 근거 없으면 지어내지 않고 "문서에 없음".</p>
       </div>
     </div>
@@ -627,9 +632,9 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <div class="bento-card reveal" data-delay="3"><h3>테스트 · 감사</h3><p>유닛 1,097개 + 라이브 실측 감사. 리팩터가 회귀를 만들면 즉시 잡힌다.</p></div>
     </div>
     <div class="stats reveal" style="margin-top:20px">
-      <div class="stat"><strong><span data-count="1097">1,097</span></strong><span>자동 테스트</span></div>
+      <div class="stat"><strong><span data-count="23">23</span></strong><span>자동 로그인 사이트</span></div>
       <div class="stat"><strong><span data-count="12">12</span></strong><span>지원 플랫폼</span></div>
-      <div class="stat"><strong><span data-count="77">77</span></strong><span>격리 샵 모듈</span></div>
+      <div class="stat"><strong><span data-count="77">77</span></strong><span>격리 샵 모듈 · 활성 64</span></div>
       <div class="stat"><strong>v1.0.6</strong><span>DMG · Windows CI 배포</span></div>
     </div>
     <!-- 아키텍처 다이어그램 — 공유 엔진 / 플래그 게이트 / 샵 모듈 -->
@@ -684,7 +689,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <a class="axis reveal" href="#ai"><span class="k">1</span><div class="body"><h3>LLM 애플리케이션</h3><p>tool-use 멀티스텝 에이전트, structured output, 컨텍스트 관리.</p></div><span class="to">→ CH.3 AI · 구글폼 에이전트</span></a>
       <a class="axis reveal" href="#ai"><span class="k">2</span><div class="body"><h3>AI 신뢰성·평가</h3><p>골든셋 회귀 하네스, 결정적 가드레일, 정확성 감사.</p></div><span class="to">→ CH.3 · 케이스 스터디 ③</span></a>
       <a class="axis reveal" href="#automation"><span class="k">3</span><div class="body"><h3>데이터·웹 자동화</h3><p>64샵·12플랫폼, anti-bot 대응, 주문서 실측 파이프라인.</p></div><span class="to">→ CH.2 자동화</span></a>
-      <a class="axis reveal" href="#reliability"><span class="k">4</span><div class="body"><h3>소프트웨어 기본기</h3><p>테스트 1,097 · 커밋 468 · 플랫폼 디스패치 아키텍처.</p></div><span class="to">→ CH.4 신뢰성</span></a>
+      <a class="axis reveal" href="#reliability"><span class="k">4</span><div class="body"><h3>소프트웨어 기본기</h3><p>테스트 1,097 · 플랫폼 디스패치 아키텍처.</p></div><span class="to">→ CH.4 신뢰성</span></a>
       <a class="axis reveal" href="#reliability"><span class="k">5</span><div class="body"><h3>운영·신뢰성(SRE)</h3><p>서킷 브레이커, 인증 자동복구, 장애 진단 노트.</p></div><span class="to">→ CH.4 · 케이스 스터디 ①②</span></a>
       <a class="axis reveal" href="#ai-native"><span class="k">6</span><div class="body"><h3>AI-native 워크플로</h3><p>Claude Code + 서브에이전트/워크플로 오케스트레이션 + 감사 루프.</p></div><span class="to">→ AI-NATIVE · 케이스 스터디 ④</span></a>
       <a class="axis reveal" href="#impact"><span class="k">7</span><div class="body"><h3>제품·비즈니스 임팩트</h3><p>문제에서 출발, 수치로 증명(30분→3분, 자동 5~6회/일).</p></div><span class="to">→ CH.5 임팩트</span></a>
@@ -723,12 +728,12 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <a class="dive reveal" href="case-studies/01-sleep-guard-장애진단.html"><div class="tag">① 장애 진단</div><h3>수면이 만든 가짜 장애</h3><p>새벽 600s 타임아웃 오탐의 근본원인을 관찰→가설→검증으로 추적, sleep-guard로 근절.</p><div class="go">읽기 →</div></a>
       <a class="dive reveal" data-delay="1" href="case-studies/02-antibot-인증자동복구.html"><div class="tag">② 인증 설계</div><h3>봇으로 몰리지 않고 세션 지키기</h3><p>봇 감지·안티봇·조용한 만료의 세 벽을 CDP 캡처·백오프·닫힌 루프로.</p><div class="go">읽기 →</div></a>
       <a class="dive reveal" data-delay="2" href="case-studies/03-정확성감사-eval하네스.html"><div class="tag">③ 신뢰성</div><h3>스크래퍼가 맞는지 어떻게 아는가</h3><p>정확성 감사를 상시 평가 하네스로 승격. 95.5% → 100%.</p><div class="go">읽기 →</div></a>
-      <a class="dive reveal" data-delay="3" href="case-studies/04-ai-native-워크플로.html"><div class="tag">④ 워크플로</div><h3>혼자 9만 줄을 운영하는 법</h3><p>규약·병렬 검증·적대적 리뷰·메모리·감사 루프 — 다섯 축이 하루에 다 돈 사건.</p><div class="go">읽기 →</div></a>
+      <a class="dive reveal" data-delay="3" href="case-studies/04-ai-native-워크플로.html"><div class="tag">④ 워크플로</div><h3>혼자 64개 샵을 운영하는 법</h3><p>규약·병렬 검증·적대적 리뷰·메모리·감사 루프 — 다섯 축이 하루에 다 돈 사건.</p><div class="go">읽기 →</div></a>
     </div>
   </div>
 </section>
 
-<!-- 10. CONTACT — 밤이 다시 새벽으로 · 무드: 핑크 -->
+<!-- 10. CONTACT — 밤의 고대비 피날레 · 무드: 핑크 -->
 <section class="contact" id="contact" style="--mood:#FF5C8A">
   <div class="wrap">
     <h2 class="reveal"><span class="grad-text">다음 현장</span>을<br>찾고 있습니다.</h2>
