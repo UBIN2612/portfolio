@@ -77,6 +77,12 @@ body.day{
 }
 /* 밤 — 딥블랙 (자동화~끝). :root 기본값 사용 */
 
+/* 브랜드 그라데이션 진흙톤 방지 — 지원 브라우저는 oklch 로 보간해 중간 채도 유지
+   (초록→핑크가 무채색을 지나며 죽지 않게). 미지원은 위 sRGB --grad 로 폴백. */
+@supports (background:linear-gradient(in oklch,red,blue)){
+  :root{--grad:linear-gradient(100deg in oklch,var(--g1),var(--g2))}
+}
+
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth;background:#05060A}
 body{
@@ -159,12 +165,25 @@ a{color:inherit}
 .nav-links a.active{color:var(--ink)}
 .nav-links a.active::after{content:"";position:absolute;left:12px;right:12px;bottom:3px;height:2px;
   border-radius:2px;background:var(--grad)}
+/* 접근성 — 인터랙티브 요소 키보드 포커스 가시화 + 더블탭 지연 제거 */
+a,button{touch-action:manipulation}
+.nav-links a:focus-visible,.nav-name:focus-visible,.axis:focus-visible,.dive:focus-visible,
+.contact-mail a:focus-visible,footer a:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px;border-radius:6px}
+/* 스킵 링크 — Tab 최초 포커스 시 노출(월드 무관 고대비 고정) */
+.skip{position:fixed;top:8px;left:8px;z-index:200;transform:translateY(-160%);
+  background:#0B0D12;color:#fff;padding:11px 18px;border-radius:8px;font-weight:700;font-size:13.5px;
+  text-decoration:none;transition:transform .18s ease}
+.skip:focus{transform:none;outline:2.5px solid var(--accent);outline-offset:2px}
 @media (max-width:820px){
-  .nav{padding:10px 14px}
+  .nav{padding:8px 12px}
   .nav-name span{display:none}
-  .nav-links{max-width:76vw;overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none}
+  /* 가로 스크롤 + 우측 페이드로 "더 있음" 단서, 스크롤바 숨김 */
+  .nav-links{max-width:78vw;overflow-x:auto;-ms-overflow-style:none;scrollbar-width:none;
+    -webkit-mask-image:linear-gradient(90deg,#000 86%,transparent);mask-image:linear-gradient(90deg,#000 86%,transparent)}
   .nav-links::-webkit-scrollbar{display:none}
-  .nav-links a{padding:7px 9px;font-size:11.5px}
+  /* 탭 타깃 44px 높이 확보 */
+  .nav-links a{display:flex;align-items:center;min-height:44px;padding:0 11px;font-size:12px}
+  .nav-links a.active::after{bottom:7px}
 }
 
 /* ============ 공통 ============ */
@@ -417,9 +436,17 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
   .cue-line::after,.live-line i{animation:none}
   .hero-meta,.hero h1,.hero p.lede,.hero-cue{animation:none}
 }
+/* 히어로 기술 스택 스트립 */
+.hero-stack{margin-top:22px;display:flex;flex-wrap:wrap;gap:8px 14px;
+  font-family:var(--font-mono);font-size:12px;letter-spacing:.04em;color:var(--muted)}
+.hero-stack b{color:var(--ink);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:11px}
+@media (max-width:680px){.hero-stack{font-size:11px}}
 </style>
+<!-- 프로그레시브 인핸스먼트 — JS 없이도 본문·수치가 보이고 스크럽 UI는 숨김 -->
+<noscript><style>.reveal{opacity:1;transform:none}.progress,.hero-cue{display:none}</style></noscript>
 </head>
 <body>
+<a class="skip" href="#content">본문 바로가기</a>
 
 <!-- 시그니처 하늘 (스크롤 스크럽) -->
 <div class="sky" aria-hidden="true">
@@ -450,6 +477,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
   <p class="hero-meta"><span>HWANG YUBIN — PORTFOLIO</span><span class="bar" aria-hidden="true"></span><b>02 PROJECTS · IN PRODUCTION · 2026</b></p>
   <h1>현장의 문제를,<br><span class="grad-text">AI와 자동화</span>로<br>끝까지.</h1>
   <p class="lede">복지 현장의 종이 서류부터 커머스 실무의 반복 소싱까지 — <br>제가 직접 겪은 비효율을, 실제 사람들이 매일 쓰는 시스템으로 바꿉니다.</p>
+  <p class="hero-stack"><b>Stack</b> Node · Playwright · Electron · React · Claude Code</p>
   <div class="hero-cue" aria-hidden="true"><div class="cue-line"></div><span>SCROLL</span></div>
 </header>
 
@@ -457,9 +485,9 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
 <section class="numbers" id="numbers" aria-label="핵심 수치">
   <div class="wrap">
     <div class="num-row">
-      <div class="reveal"><strong><span data-count="64">0</span></strong><span>자동 수집 쇼핑몰</span></div>
-      <div class="reveal" data-delay="1"><strong><span data-count="1097">0</span></strong><span>자동 테스트 통과</span></div>
-      <div class="reveal" data-delay="2"><strong><span data-count="23">0</span></strong><span>자동 로그인 세션</span></div>
+      <div class="reveal"><strong><span data-count="64">64</span></strong><span>자동 수집 쇼핑몰</span></div>
+      <div class="reveal" data-delay="1"><strong><span data-count="1097">1,097</span></strong><span>자동 테스트 통과</span></div>
+      <div class="reveal" data-delay="2"><strong><span data-count="23">23</span></strong><span>자동 로그인 사이트</span></div>
       <div class="reveal" data-delay="3"><strong>30분 → 3분</strong><span>현장 출석 처리</span></div>
     </div>
   </div>
@@ -512,9 +540,9 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <div class="pipe-step reveal" data-delay="2"><div class="n">STEP 03</div><h3>주문서 실측</h3><p>로그인→상품→장바구니→주문서까지 진입해 받아야 할 입력 항목을 실측, 장바구니는 원복.</p></div>
       <div class="pipe-step reveal" data-delay="3"><div class="n">STEP 04</div><h3>브리핑</h3><p>새 이벤트·마감 임박·할 일을 하루 요약으로. 사람이 검토할 것만 남긴다.</p></div>
     </div>
-    <!-- 라이브 수집 사이클 터미널 로그 — 실제 npm run scrape:cli 1회 실행 캡처(2026-08-07, 전 라인 실측) -->
-    <div class="term reveal" style="margin-top:22px" aria-label="수집 사이클 실제 터미널 로그">
-      <div class="frame-bar"><i></i><i></i><i></i><em>kpop-event-scraper — npm run scrape:cli (실제 1회 실행)</em></div>
+    <!-- 실제 수집 1회 실행의 로그 발췌 — 값은 그대로, 한국어 주석·색 하이라이트는 가독성 위해 추가(2026-08-07) -->
+    <div class="term reveal" style="margin-top:22px" aria-label="수집 사이클 실행 로그 발췌(재조판)">
+      <div class="frame-bar"><i></i><i></i><i></i><em>kpop-event-scraper — 실행 로그 발췌 · 가독성 위해 재조판</em></div>
       <pre><span class="dim">$ npm run scrape:cli</span>
 
 <span class="dim"># 01 목록 수집 — 플랫폼별 디스패치로 순회</span>
@@ -535,6 +563,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
 
 <span class="ok">✓ 수집 사이클 완료</span>  64개 쇼핑몰 순회 · 1,355 이벤트 · <span class="dim">새 이벤트·마감 임박만 브리핑 상단에</span></pre>
     </div>
+    <p class="media-cap">실제 수집 1회 실행의 로그 발췌 — 수치·경로는 그대로, 한국어 주석·색은 가독성용.</p>
     <div class="block flip" style="margin-top:20px">
       <div class="block-text reveal">
         <p class="eyebrow">실측</p>
@@ -578,7 +607,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       </div>
     </div>
     <div class="bento" style="margin-top:20px">
-      <div class="bento-card wide reveal"><h3>결정적 가드레일</h3><p>만료·품절·진행중 판정은 AI가 아니라 결정적 로직. 골든셋 회귀 하네스가 매번 "무엇이 새로 깨졌는지"를 즉시 말한다 — AI 비결정성을 평가 밖으로 분리. 위 세 캡처는 모두 <b>실제 CLI 실행 출력</b>입니다.</p></div>
+      <div class="bento-card wide reveal"><h3>결정적 가드레일</h3><p>만료·품절·진행중 판정은 AI가 아니라 결정적 로직. 골든셋 회귀 하네스가 매번 "무엇이 새로 깨졌는지"를 즉시 말한다 — AI 비결정성을 평가 밖으로 분리합니다.</p></div>
     </div>
   </div>
 </section>
@@ -598,9 +627,9 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <div class="bento-card reveal" data-delay="3"><h3>테스트 · 감사</h3><p>유닛 1,097개 + 라이브 실측 감사. 리팩터가 회귀를 만들면 즉시 잡힌다.</p></div>
     </div>
     <div class="stats reveal" style="margin-top:20px">
-      <div class="stat"><strong><span data-count="1097">0</span></strong><span>자동 테스트</span></div>
-      <div class="stat"><strong><span data-count="468">0</span></strong><span>커밋 · 약 4개월</span></div>
-      <div class="stat"><strong><span data-count="77">0</span></strong><span>격리 샵 모듈</span></div>
+      <div class="stat"><strong><span data-count="1097">1,097</span></strong><span>자동 테스트</span></div>
+      <div class="stat"><strong><span data-count="12">12</span></strong><span>지원 플랫폼</span></div>
+      <div class="stat"><strong><span data-count="77">77</span></strong><span>격리 샵 모듈</span></div>
       <div class="stat"><strong>v1.0.6</strong><span>DMG · Windows CI 배포</span></div>
     </div>
     <!-- 아키텍처 다이어그램 — 공유 엔진 / 플래그 게이트 / 샵 모듈 -->
@@ -634,7 +663,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
     <div class="chapter-head reveal">
       <p class="eyebrow">CH.5 — 임팩트</p>
       <h2>도입 전 / 후</h2>
-      <p class="oneliner">기술이 아니라 <b>문제</b>에서 출발했고, 수치로 말합니다. 실무 워크플로(소싱 → 공유 → 구매) 안에서 병목을 도구로 바꿨습니다.</p>
+      <p class="oneliner"><b>문제</b>에서 출발해 수치로 증명합니다. 실무 워크플로(소싱 → 공유 → 구매) 안에서 병목을 도구로 바꿨습니다.</p>
     </div>
     <div class="bento">
       <div class="bento-card reveal"><h3>출석 처리</h3><p>하루 30분 수기 → 3분. 선생님의 시간을 아이들에게 돌려줌.</p></div>
@@ -669,8 +698,8 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
   <div class="wrap">
     <div class="chapter-head reveal">
       <p class="eyebrow">AI-NATIVE</p>
-      <h2>어떻게 혼자<br>9만 줄을 운영하는가</h2>
-      <p class="oneliner">추적 소스 <b>약 9만 줄</b>(앱 본체 ~5.7만)·<b>64개 샵</b>을 한 사람이 유지합니다. 손이 빠른 게 아니라, <b>검증을 확장</b>하는 워크플로입니다.</p>
+      <h2>어떻게 혼자<br>64개 샵을 유지하는가</h2>
+      <p class="oneliner">앱 본체 <b>약 5.7만 줄</b>(테스트·fixture 제외)·<b>64개 샵</b>을 한 사람이 유지합니다. 손이 빠른 게 아니라, <b>검증을 확장</b>하는 워크플로입니다.</p>
     </div>
     <div class="bento">
       <div class="bento-card reveal"><h3>규약을 코드로 (CLAUDE.md)</h3><p>샵별/공통 편집 경계·git 위생·프로세스 보호를 문서로 못박아 매 세션 주입. 같은 실수를 반복하지 않는 표준.</p></div>
@@ -709,6 +738,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <a class="btn btn-ghost" href="https://github.com/UBIN2612" target="_blank" rel="noopener">GitHub 방문 ↗</a>
     </div>
     <p class="contact-mail reveal" data-delay="3"><a href="mailto:ubin0612@icloud.com">ubin0612@icloud.com</a></p>
+    <p class="reveal" data-delay="3" style="margin-top:12px;font-size:13px;color:var(--muted)">이력서·상세 경력은 이메일로 요청해 주세요.</p>
   </div>
 </section>
 </main>
@@ -755,7 +785,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       })(t0);
     });
   },{threshold:.6});
-  document.querySelectorAll('[data-count]').forEach(function(el){ cio.observe(el); });
+  document.querySelectorAll('[data-count]').forEach(function(el){ el.textContent='0'; cio.observe(el); });
 
   /* 세계 토큰(dawn/day/night) — 하늘 광량과 정렬해 이산 전환 (가독성) */
   function setWorld(p){
@@ -767,11 +797,14 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
   /* ── 시그니처 스크럽: 스크롤 → --day(0..1), 구간별(piecewise) ── */
   var midEl = document.getElementById('automation');
   var endEl = document.getElementById('ai');
-  var S = 1, E = 2;
+  var S = 1, E = 2, docH = 1;
+  var bar = document.querySelector('.progress');
   function measure(){
     S = Math.max(1, (midEl ? midEl.offsetTop : innerHeight*2) - innerHeight*0.5);
     E = Math.max(S + 1, (endEl ? endEl.offsetTop : innerHeight*4) - innerHeight*0.72);
+    docH = Math.max(1, root.scrollHeight - innerHeight);   /* 진행선용 문서 높이 캐시(스크롤 중 reflow 방지) */
   }
+  function paintBar(){ if(bar) bar.style.width = Math.min(100, scrollY / docH * 100) + '%'; }
   function progress(){
     var y = scrollY;
     if (y <= S) return Math.max(0, 0.55 * (y / S));
@@ -794,12 +827,17 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
     },{rootMargin:'-45% 0px -45% 0px'});
     marks.forEach(function(m){ var el=document.getElementById(m[0]); if(el) rio.observe(el); });
     apply(0);
+    var barTick = false;
+    addEventListener('scroll', function(){ if(barTick) return; barTick=true; requestAnimationFrame(function(){ paintBar(); barTick=false; }); }, {passive:true});
+    addEventListener('resize', measure);
+    paintBar();
   } else {
     var ticking = false;
     function onScroll(){
       if(ticking) return; ticking = true;
       requestAnimationFrame(function(){
         apply(progress());
+        paintBar();
         ticking = false;
       });
     }
@@ -814,20 +852,15 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
   var nio = new IntersectionObserver(function(es){
     es.forEach(function(e){
       if(!e.isIntersecting) return;
-      links.forEach(function(a){ a.classList.remove('active'); });
-      var a = map[e.target.id]; if(a) a.classList.add('active');
+      links.forEach(function(a){ a.classList.remove('active'); a.removeAttribute('aria-current'); });
+      var a = map[e.target.id];
+      if(a){ a.classList.add('active'); a.setAttribute('aria-current','true'); a.scrollIntoView({block:'nearest',inline:'center'}); }
     });
   },{rootMargin:'-40% 0px -52% 0px'});
   ['problem','automation','ai','reliability','matrix','deep-dives','contact'].forEach(function(id){
     var el = document.getElementById(id); if(el) nio.observe(el);
   });
 
-  /* 진행선 */
-  var bar = document.querySelector('.progress');
-  addEventListener('scroll', function(){
-    var h = document.documentElement;
-    bar.style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight)*100)+'%';
-  },{passive:true});
 })();
 </script>
 </body>
