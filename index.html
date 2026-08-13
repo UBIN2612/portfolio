@@ -38,8 +38,8 @@
 
 :root{
   --day:0;                 /* 0 = 새벽/낮, 1 = 밤. 스크롤 스크럽으로 구동 */
-  --bg:#08090C; --card:#0E1016; --glass:rgba(255,255,255,.035);
-  --ink:#F2F3F7; --muted:#9AA1B3;
+  --bg:#08090C; --card:#0E1016; --card-2:#14161F; --glass:rgba(255,255,255,.035);
+  --ink:#F2F3F7; --muted:#A8AEC0;
   --line:rgba(255,255,255,.10); --line-strong:rgba(255,255,255,.20);
   --accent:#FF5C8A; --accent-ink:#0B0D12;
   --accent-soft:rgba(255,92,138,.10); --accent-glow:rgba(255,92,138,.40);
@@ -54,7 +54,7 @@
 /* 새벽 — 차가운 안개빛 (hero / numbers) */
 body.dawn{
   background-color:#eaeff6;
-  --card:#FFFFFF; --glass:rgba(255,255,255,.55);
+  --card:#FFFFFF; --card-2:#F4F7FC; --glass:rgba(255,255,255,.55);
   --ink:#171B26; --muted:#59617A;
   --line:rgba(23,27,38,.13); --line-strong:rgba(23,27,38,.26);
   --accent:#E43A6D; --accent-ink:#FFFFFF;
@@ -66,7 +66,7 @@ body.dawn{
 /* 낮 — 따뜻한 종이빛 (문제 / 성산 현장) */
 body.day{
   background-color:#f3efe6;
-  --card:#FFFFFF; --glass:rgba(255,255,255,.58);
+  --card:#FFFFFF; --card-2:#FBF8F1; --glass:rgba(255,255,255,.58);
   --ink:#1E231D; --muted:#5C635A;
   --line:rgba(31,36,30,.15); --line-strong:rgba(31,36,30,.28);
   --accent:#2E7D4F; --accent-ink:#FFFFFF;
@@ -146,7 +146,7 @@ a{color:inherit}
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");}
 
 /* ============ 진행선 + 엣지 앵커 헤더 ============ */
-.progress{position:fixed;top:0;left:0;height:2.5px;width:0;z-index:120;background:var(--grad)}
+.progress{position:fixed;top:0;left:0;height:2.5px;width:0;z-index:120;background:var(--accent);transition:background-color .8s ease}
 .nav{
   position:fixed;top:0;left:0;right:0;z-index:110;
   display:flex;align-items:center;justify-content:space-between;
@@ -164,7 +164,7 @@ a{color:inherit}
 .nav-links a:hover{color:var(--ink)}
 .nav-links a.active{color:var(--ink)}
 .nav-links a.active::after{content:"";position:absolute;left:12px;right:12px;bottom:3px;height:2px;
-  border-radius:2px;background:var(--grad)}
+  border-radius:2px;background:var(--accent);transition:background-color .5s ease}
 /* 접근성 — 인터랙티브 요소 키보드 포커스 가시화 + 더블탭 지연 제거 */
 a,button{touch-action:manipulation}
 .nav-links a:focus-visible,.nav-name:focus-visible,.axis:focus-visible,.dive:focus-visible,
@@ -190,13 +190,13 @@ a,button{touch-action:manipulation}
 .wrap{max-width:1200px;margin:0 auto;padding:0 clamp(22px,5.2vw,64px)}
 section{scroll-margin-top:78px;position:relative}
 h1,h2,h3{letter-spacing:-.04em;text-wrap:balance;line-height:1.12}
-.grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.grad-text{color:var(--ink)}
 .eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--font-mono);
   font-size:11.5px;font-weight:600;letter-spacing:.2em;color:var(--muted);text-transform:uppercase}
 .eyebrow::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--mood);
   transition:background-color .5s ease}
-.reveal{opacity:0;transform:translateY(26px);
-  transition:opacity .8s cubic-bezier(.2,.6,.2,1),transform .8s cubic-bezier(.2,.6,.2,1)}
+.reveal{opacity:0;transform:translateY(10px);
+  transition:opacity .7s cubic-bezier(.2,.6,.2,1),transform .7s cubic-bezier(.2,.6,.2,1)}
 .reveal.on{opacity:1;transform:none}
 .reveal[data-delay="1"]{transition-delay:.10s}
 .reveal[data-delay="2"]{transition-delay:.20s}
@@ -220,7 +220,7 @@ h1,h2,h3{letter-spacing:-.04em;text-wrap:balance;line-height:1.12}
   display:flex;align-items:center;gap:12px;color:var(--muted);
   font-family:var(--font-mono);font-size:10.5px;letter-spacing:.24em;animation:rise .9s .6s both}
 .cue-line{width:52px;height:1.5px;background:var(--line);position:relative;overflow:hidden}
-.cue-line::after{content:"";position:absolute;inset:0;background:var(--grad);
+.cue-line::after{content:"";position:absolute;inset:0;background:var(--accent);
   animation:cue 2.1s cubic-bezier(.6,0,.3,1) infinite}
 @keyframes cue{0%{transform:translateX(-100%)}55%{transform:translateX(0)}100%{transform:translateX(100%)}}
 
@@ -274,43 +274,33 @@ h1,h2,h3{letter-spacing:-.04em;text-wrap:balance;line-height:1.12}
 @media (max-width:820px){.block{grid-template-columns:1fr;gap:26px}.block.flip .block-media{order:0}}
 
 /* 미디어 프레임 — 하이라인 + 무드 상단선, 그림자 최소, 크롭 */
-.frame{background:var(--card);border:1px solid var(--line-strong);border-radius:6px;overflow:hidden;
+.frame{background:var(--card);border:1px solid var(--line-strong);border-radius:3px;overflow:hidden;
   box-shadow:var(--shadow);position:relative;
   transition:background-color .8s ease,border-color .8s ease,transform .5s cubic-bezier(.2,.6,.2,1)}
-.frame::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--mood);
-  z-index:2;transition:background-color .5s ease}
 .block-media:hover .frame{transform:translateY(-3px)}
-.frame-bar{display:flex;align-items:center;gap:6px;padding:11px 14px;border-bottom:1px solid var(--line)}
-.frame-bar i{width:9px;height:9px;border-radius:50%;background:var(--line-strong)}
-.frame-bar em{margin-left:8px;font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.04em}
+.frame-bar{display:flex;align-items:center;gap:6px;padding:9px 14px;border-bottom:1px solid var(--line)}
+.frame-bar em{font-style:normal;font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:.04em}
 .frame img,.frame video{width:100%;height:auto;display:block}
 .media-cap{margin-top:14px;font-size:12.5px;color:var(--muted);font-family:var(--font-mono);letter-spacing:.02em}
 
 /* 벤토 — 하이라인 카드 (플랫, 최소 라운드) */
 .bento{display:grid;grid-template-columns:repeat(12,1fr);gap:12px;margin-top:34px}
-.bento-card{grid-column:span 6;background:var(--glass);border:1px solid var(--line);border-radius:10px;
+.bento-card{grid-column:span 6;background:var(--card-2);border:1px solid var(--line);border-radius:3px;
   padding:26px 26px 22px;position:relative;overflow:hidden;
-  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   transition:background-color .8s ease,border-color .35s ease,transform .35s cubic-bezier(.2,.6,.2,1)}
 .bento-card:hover{transform:translateY(-2px);border-color:var(--line-strong)}
-.bento-card::after{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:var(--mood);opacity:0;transition:opacity .35s ease}
-.bento-card:hover::after{opacity:1}
 .bento-card h3{font-size:15.5px;font-weight:700;margin-bottom:8px;letter-spacing:-.01em}
-.bento-card h3::before{content:"— ";color:var(--mood)}
 .bento-card p{font-size:13.8px;color:var(--muted);line-height:1.65}
 .bento-card.wide{grid-column:span 12}
 @media (max-width:680px){.bento-card,.bento-card.wide{grid-column:span 12}}
 
 /* 파이프라인 스텝 (CH.2) — 고정 다크 서피스, 하이라인 */
 .pipe{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:34px}
-.pipe-step{background:rgba(11,13,19,.60);border:1px solid var(--line-strong);border-radius:10px;padding:22px 18px;
-  -webkit-backdrop-filter:blur(14px) saturate(1.2);backdrop-filter:blur(14px) saturate(1.2);position:relative;
-  border-top:2px solid var(--mood);transition:border-color .5s ease}
-.pipe-step .n{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:#FF7AA2;font-weight:700}
-.pipe-step h3{font-size:16px;font-weight:750;margin:8px 0 6px;color:#F3F4F8;letter-spacing:-.01em}
-.pipe-step p{font-size:13px;color:#AAB0C2;line-height:1.6}
-.pipe-step:not(:last-child)::after{content:"→";position:absolute;right:-9px;top:50%;transform:translateY(-50%);
-  color:#9AA1B3;font-weight:700;z-index:1;text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.pipe-step{background:var(--card-2);border:1px solid var(--line);border-radius:3px;padding:22px 18px;
+  position:relative;transition:background-color .8s ease,border-color .5s ease}
+.pipe-step .n{font-family:var(--font-mono);font-size:11px;letter-spacing:.14em;color:var(--mood);font-weight:700;transition:color .5s ease}
+.pipe-step h3{font-size:16px;font-weight:750;margin:8px 0 6px;color:var(--ink);letter-spacing:-.01em}
+.pipe-step p{font-size:13px;color:var(--muted);line-height:1.6}
 @media (max-width:820px){.pipe{grid-template-columns:repeat(2,1fr)}.pipe-step:nth-child(2n)::after{display:none}}
 @media (max-width:480px){.pipe{grid-template-columns:1fr}.pipe-step::after{display:none}}
 
@@ -330,9 +320,8 @@ h1,h2,h3{letter-spacing:-.04em;text-wrap:balance;line-height:1.12}
 }
 
 /* 터미널 리플레이 (CH.2) */
-.term{background:#0b0d13;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;
+.term{background:#0b0d13;border:1px solid var(--line-strong);border-radius:3px;overflow:hidden;
   font-family:var(--font-mono);box-shadow:var(--shadow);margin-top:8px;position:relative}
-.term::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--mood);z-index:2}
 .term .frame-bar{border-color:rgba(255,255,255,.08)}
 .term pre{margin:0;padding:18px 20px;font-size:12.5px;line-height:1.85;color:#c6ccda;white-space:pre-wrap;word-break:break-word}
 .term .ok{color:#4fd08a}.term .warn{color:#ffce6b}.term .dim{color:#7982a0}.term .pink{color:#ff88b0}
@@ -340,31 +329,29 @@ h1,h2,h3{letter-spacing:-.04em;text-wrap:balance;line-height:1.12}
 /* CH.3 실캡처 — 이미지 자체가 터미널 창이라 프레임바 없이, 하이라인만 */
 .media-cap.tight{margin-top:12px}
 .media-cap b{color:var(--ink);font-weight:700}
-.shot{border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;box-shadow:var(--shadow);margin-top:8px;position:relative}
-.shot::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;background:var(--mood);z-index:2}
+.shot{border:1px solid var(--line-strong);border-radius:3px;overflow:hidden;box-shadow:var(--shadow);margin-top:8px;position:relative}
 .shot img{width:100%;height:auto;display:block}
 .cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px;align-items:start}
 .cap-grid .shot{margin-top:0}
 @media (max-width:820px){.cap-grid{grid-template-columns:1fr;gap:22px}}
 
 /* CH.4 아키텍처 다이어그램 */
-.arch{margin-top:20px;border:1px solid var(--line);border-radius:12px;padding:clamp(24px,3.6vw,40px);
-  background:var(--glass);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+.arch{margin-top:20px;border:1px solid var(--line);border-radius:3px;padding:clamp(24px,3.6vw,40px);
+  background:var(--card-2);
   display:flex;flex-direction:column;align-items:center;
   transition:background-color .8s ease,border-color .8s ease}
-.arch-box{width:100%;max-width:660px;text-align:center;border-radius:8px;padding:16px 22px;
-  border:1px solid var(--line-strong);background:rgba(11,13,19,.55);
-  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
-.arch-box .t{font-weight:750;font-size:15.5px;color:#F2F3F7}
-.arch-box .d{font-size:12px;color:#9AA1B3;margin-top:5px;font-family:var(--font-mono);letter-spacing:.01em;line-height:1.7}
+.arch-box{width:100%;max-width:660px;text-align:center;border-radius:3px;padding:16px 22px;
+  border:1px solid var(--line-strong);background:var(--card);transition:background-color .8s ease}
+.arch-box .t{font-weight:750;font-size:15.5px;color:var(--ink)}
+.arch-box .d{font-size:12px;color:var(--muted);margin-top:5px;font-family:var(--font-mono);letter-spacing:.01em;line-height:1.7}
 .arch-conn{width:2px;height:24px;background:var(--mood);transition:background-color .5s ease}
 .arch-gate{font-family:var(--font-mono);font-size:12.5px;letter-spacing:.04em;color:var(--accent);
   border:1px dashed var(--accent-glow);border-radius:999px;padding:6px 16px}
 .arch-shops{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;max-width:660px;margin-top:2px}
-.arch-shop{text-align:center;border-radius:8px;padding:13px 8px 11px;border:1px solid var(--line);
-  background:rgba(11,13,19,.42)}
-.arch-shop b{display:block;font-weight:700;color:#F2F3F7;font-size:13px}
-.arch-shop span{font-family:var(--font-mono);font-size:10px;color:#9AA1B3;letter-spacing:.02em}
+.arch-shop{text-align:center;border-radius:3px;padding:13px 8px 11px;border:1px solid var(--line);
+  background:var(--card);transition:background-color .8s ease}
+.arch-shop b{display:block;font-weight:700;color:var(--ink);font-size:13px}
+.arch-shop span{font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.02em}
 .arch-cap{margin-top:16px;font-size:12.5px;color:var(--muted);font-family:var(--font-mono);
   letter-spacing:.02em;text-align:center}
 @media (max-width:680px){.arch-shops{grid-template-columns:repeat(2,1fr)}}
@@ -388,13 +375,10 @@ h1,h2,h3{letter-spacing:-.04em;text-wrap:balance;line-height:1.12}
 
 /* 9. DEEP DIVES — 하이라인 리스트 카드 */
 .dives{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:40px}
-.dive{display:block;background:var(--glass);border:1px solid var(--line);border-radius:10px;padding:26px 26px 24px;
+.dive{display:block;background:var(--card-2);border:1px solid var(--line);border-radius:3px;padding:26px 26px 24px;
   text-decoration:none;color:inherit;position:relative;overflow:hidden;
-  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
   transition:border-color .3s ease,transform .3s cubic-bezier(.2,.6,.2,1),background-color .8s ease}
-.dive::after{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:var(--mood);opacity:0;transition:opacity .3s ease}
 .dive:hover{transform:translateY(-2px);border-color:var(--line-strong)}
-.dive:hover::after{opacity:1}
 .dive .tag{font-family:var(--font-mono);font-size:11px;letter-spacing:.12em;color:var(--mood)}
 .dive h3{font-size:18px;font-weight:750;margin:8px 0 8px;letter-spacing:-.02em}
 .dive p{font-size:13.6px;color:var(--muted);line-height:1.6}
@@ -412,8 +396,8 @@ h1,h2,h3{letter-spacing:-.04em;text-wrap:balance;line-height:1.12}
   transition:transform .25s cubic-bezier(.2,.6,.2,1),box-shadow .25s,border-color .25s}
 .btn:hover{transform:translateY(-2px)}
 .btn:focus-visible{outline:2.5px solid var(--accent);outline-offset:3px}
-.btn-fill{background:var(--grad);color:#0B0D12}
-.btn-fill:hover{box-shadow:0 16px 44px -16px rgba(255,92,138,.5)}
+.btn-fill{background:var(--ink);color:var(--bg);transition:background-color .8s ease,opacity .25s,transform .25s cubic-bezier(.2,.6,.2,1)}
+.btn-fill:hover{opacity:.9}
 .btn-ghost{border:1.5px solid var(--line-strong);color:var(--ink)}
 .btn-ghost:hover{border-color:var(--accent)}
 .contact-mail{margin-top:34px;font-family:var(--font-mono);font-size:13.5px;color:var(--muted)}
@@ -512,7 +496,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       </div>
       <div class="block-media reveal" data-delay="1">
         <div class="frame">
-          <div class="frame-bar"><i></i><i></i><i></i><em>sungsan-center — 메인</em></div>
+          <div class="frame-bar"><em>sungsan-center — 메인</em></div>
           <video data-autoplay muted loop playsinline preload="none" width="800" height="378" poster="assets/sungsan-main-poster.png" aria-label="성산지역아동센터 웹 메인 페이지 실제 구동 화면">
             <source src="assets/sungsan-main.webm" type="video/webm">
             <source src="assets/sungsan-main.mp4" type="video/mp4">
@@ -547,7 +531,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
     </div>
     <!-- 실제 수집 1회 실행의 로그 발췌 — 값은 그대로, 한국어 주석·색 하이라이트는 가독성 위해 추가(2026-08-07) -->
     <div class="term reveal" style="margin-top:22px" aria-label="수집 사이클 실행 로그 발췌(재조판)">
-      <div class="frame-bar"><i></i><i></i><i></i><em>kpop-event-scraper — 실행 로그 발췌 · 가독성 위해 재조판</em></div>
+      <div class="frame-bar"><em>kpop-event-scraper — 실행 로그 발췌 · 가독성 위해 재조판</em></div>
       <pre><span class="dim">$ npm run scrape:cli</span>
 
 <span class="dim"># 01 목록 수집 — 플랫폼별 디스패치로 순회</span>
@@ -578,10 +562,13 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       </div>
       <div class="block-media reveal" data-delay="1">
         <div class="frame">
-          <div class="frame-bar"><i></i><i></i><i></i><em>kpop-event-scraper — 이벤트 그리드</em></div>
-          <img src="assets/app-grid.webp" width="1500" height="859" alt="실제 앱 화면 — 64개 쇼핑몰의 이벤트가 카드·마감 D-day·필터와 함께 표시된 그리드">
+          <div class="frame-bar"><em>kpop-event-scraper — 실행 데모</em></div>
+          <video data-autoplay muted loop playsinline preload="none" width="1200" height="742" poster="assets/scraper-demo-poster.webp" aria-label="kpop-event-scraper 실제 실행 화면 — 64개 쇼핑몰 수집 후 이벤트 그리드·리스트·성과 운영 대시보드">
+            <source src="assets/scraper-demo.webm" type="video/webm">
+            <source src="assets/scraper-demo.mp4" type="video/mp4">
+          </video>
         </div>
-        <p class="media-cap">실제 운영 화면 — 64개 쇼핑몰의 이벤트가 상태와 함께 한 화면에</p>
+        <p class="media-cap">실제 실행 — 64개 쇼핑몰 수집(고속 재생) → 이벤트 그리드·리스트·성과 대시보드 · 무음 자동재생</p>
       </div>
     </div>
   </div>
@@ -632,9 +619,9 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <div class="bento-card reveal" data-delay="3"><h3>테스트 · 감사</h3><p>유닛 1,097개 + 라이브 실측 감사. 리팩터가 회귀를 만들면 즉시 잡힌다.</p></div>
     </div>
     <div class="stats reveal" style="margin-top:20px">
-      <div class="stat"><strong><span data-count="23">23</span></strong><span>자동 로그인 사이트</span></div>
-      <div class="stat"><strong><span data-count="12">12</span></strong><span>지원 플랫폼</span></div>
-      <div class="stat"><strong><span data-count="77">77</span></strong><span>격리 샵 모듈 · 활성 64</span></div>
+      <div class="stat"><strong>23</strong><span>자동 로그인 사이트</span></div>
+      <div class="stat"><strong>12</strong><span>지원 플랫폼</span></div>
+      <div class="stat"><strong>77</strong><span>격리 샵 모듈 · 활성 64</span></div>
       <div class="stat"><strong>v1.0.7</strong><span>DMG · Windows CI 배포</span></div>
     </div>
     <!-- 아키텍처 다이어그램 — 공유 엔진 / 플래그 게이트 / 샵 모듈 -->
@@ -712,7 +699,7 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <div class="bento-card reveal" data-delay="2"><h3>적대적 리뷰</h3><p>만든 것을 스스로 반박. 그럴듯하지만 틀린 것을 머지 전에 거른다.</p></div>
       <div class="bento-card reveal" data-delay="3"><h3>메모리 · 감사 루프</h3><p>배운 것을 파일 메모리로 축적, 상시 하네스로 회귀를 막는다. 문서화가 감사를 강제해 잠재 버그를 잡은 실사례(PR #66).</p></div>
     </div>
-    <p class="reveal" style="margin-top:28px;font-size:15.5px;color:var(--muted)">규약 → 병렬 검증 → 적대적 리뷰 → 문서화 중 버그 발견 → 당일 수정. 다섯 축이 하루에 다 돌아간 사건을 <a href="case-studies/04-ai-native-워크플로.html" style="color:var(--accent);font-weight:700;text-underline-offset:3px">케이스 스터디 ④에서 전문으로 읽기 →</a></p>
+    <p class="reveal" style="margin-top:28px;font-size:15.5px;color:var(--muted)">규약 → 병렬 검증 → 적대적 리뷰 → 문서화 중 버그 발견 → 당일 수정. 다섯 축이 하루에 다 돌아간 사건을 <a href="case-studies/04-ai-native-워크플로.html" style="color:var(--accent);font-weight:700;text-underline-offset:3px">케이스 스터디 ④에서 전문으로 읽기</a></p>
   </div>
 </section>
 
@@ -725,10 +712,10 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
       <p class="oneliner">문제 → 진단 → 설계 → 결과 → 배운 것. 모든 수치·커밋은 저장소에서 재확인한 근거 대조표 포함. 각 편은 <b>본문과 일관된 딥다이브 페이지</b>로 열립니다.</p>
     </div>
     <div class="dives">
-      <a class="dive reveal" href="case-studies/01-sleep-guard-장애진단.html"><div class="tag">① 장애 진단</div><h3>수면이 만든 가짜 장애</h3><p>새벽 600s 타임아웃 오탐의 근본원인을 관찰→가설→검증으로 추적, sleep-guard로 근절.</p><div class="go">읽기 →</div></a>
-      <a class="dive reveal" data-delay="1" href="case-studies/02-antibot-인증자동복구.html"><div class="tag">② 인증 설계</div><h3>봇으로 몰리지 않고 세션 지키기</h3><p>봇 감지·안티봇·조용한 만료의 세 벽을 CDP 캡처·백오프·닫힌 루프로.</p><div class="go">읽기 →</div></a>
-      <a class="dive reveal" data-delay="2" href="case-studies/03-정확성감사-eval하네스.html"><div class="tag">③ 신뢰성</div><h3>스크래퍼가 맞는지 어떻게 아는가</h3><p>정확성 감사를 상시 평가 하네스로 승격. 95.5% → 100%.</p><div class="go">읽기 →</div></a>
-      <a class="dive reveal" data-delay="3" href="case-studies/04-ai-native-워크플로.html"><div class="tag">④ 워크플로</div><h3>혼자 64개 샵을 운영하는 법</h3><p>규약·병렬 검증·적대적 리뷰·메모리·감사 루프 — 다섯 축이 하루에 다 돈 사건.</p><div class="go">읽기 →</div></a>
+      <a class="dive reveal" href="case-studies/01-sleep-guard-장애진단.html"><div class="tag">① 장애 진단</div><h3>수면이 만든 가짜 장애</h3><p>새벽 600s 타임아웃 오탐의 근본원인을 관찰→가설→검증으로 추적, sleep-guard로 근절.</p><div class="go">케이스 읽기</div></a>
+      <a class="dive reveal" data-delay="1" href="case-studies/02-antibot-인증자동복구.html"><div class="tag">② 인증 설계</div><h3>봇으로 몰리지 않고 세션 지키기</h3><p>봇 감지·안티봇·조용한 만료의 세 벽을 CDP 캡처·백오프·닫힌 루프로.</p><div class="go">케이스 읽기</div></a>
+      <a class="dive reveal" data-delay="2" href="case-studies/03-정확성감사-eval하네스.html"><div class="tag">③ 신뢰성</div><h3>스크래퍼가 맞는지 어떻게 아는가</h3><p>정확성 감사를 상시 평가 하네스로 승격. 95.5% → 100%.</p><div class="go">케이스 읽기</div></a>
+      <a class="dive reveal" data-delay="3" href="case-studies/04-ai-native-워크플로.html"><div class="tag">④ 워크플로</div><h3>혼자 64개 샵을 운영하는 법</h3><p>규약·병렬 검증·적대적 리뷰·메모리·감사 루프 — 다섯 축이 하루에 다 돈 사건.</p><div class="go">케이스 읽기</div></a>
     </div>
   </div>
 </section>
@@ -739,8 +726,8 @@ footer img{width:26px;height:26px;border-radius:7px;opacity:.9}
     <h2 class="reveal"><span class="grad-text">다음 현장</span>을<br>찾고 있습니다.</h2>
     <p class="sub reveal" data-delay="1">사람에게만 쌓이던 업무 경험을, 회사에 남는 시스템으로 바꾸는 일을 합니다.</p>
     <div class="contact-actions reveal" data-delay="2">
-      <a class="btn btn-fill" href="mailto:ubin0612@icloud.com">이메일 보내기 →</a>
-      <a class="btn btn-ghost" href="https://github.com/UBIN2612" target="_blank" rel="noopener">GitHub 방문 ↗</a>
+      <a class="btn btn-fill" href="mailto:ubin0612@icloud.com">이메일 보내기</a>
+      <a class="btn btn-ghost" href="https://github.com/UBIN2612" target="_blank" rel="noopener">GitHub 방문</a>
     </div>
     <p class="contact-mail reveal" data-delay="3"><a href="mailto:ubin0612@icloud.com">ubin0612@icloud.com</a></p>
     <p class="reveal" data-delay="3" style="margin-top:12px;font-size:13px;color:var(--muted)">이력서·상세 경력은 이메일로 요청해 주세요.</p>
